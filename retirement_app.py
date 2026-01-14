@@ -94,7 +94,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 
 # --- INTERFACE ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9CA3AF;'>Developed by Shamsudeen Abdulla</p>", unsafe_allow_html=True)
 
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 col1, col2 = st.columns(2)

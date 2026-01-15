@@ -3,62 +3,72 @@ import pandas as pd
 import random
 import time
 from datetime import date
+import io
 
 # --- APP CONFIGURATION ---
-st.set_page_config(page_title="Retirement Planner Pro - Yearly Withdrawals", layout="wide")
+st.set_page_config(page_title="Retirement Planner Pro", layout="wide")
 
-# --- CUSTOM CSS (സുരക്ഷിതമായ fonts, no HTML div issues) ---
+# --- CUSTOM CSS (English Only) ---
 st.markdown("""<style>
 .main { background-color: #0E1116; color: #E5E7EB; }
 .stApp { background-color: #0E1116; }
-/* ✅ FIXED: System monospace fonts for reliability */
 .result-text { color: #22C55E; font-family: 'Courier New', 'Consolas', 'Monaco', monospace; font-weight: bold; }
 .result-white { color: white; font-family: 'Courier New', 'Consolas', 'Monaco', monospace; font-weight: bold; }
 .result-red { color: #ef4444; font-family: 'Courier New', 'Consolas', 'Monaco', monospace; font-weight: bold; }
 .quote-text { color: #22C55E; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
 .stButton>button { background-color: #22C55E; color: white; width: 100%; border: none; font-weight: bold; height: 3.5em; border-radius: 8px; }
 .stButton>button:hover { background-color: #16a34a; }
-/* ✅ REMOVED: Invalid HTML div structure */
 </style>""", unsafe_allow_html=True)
 
-# --- MOTIVATION QUOTES (മലയാളം) ---
+# --- MOTIVATION QUOTES (English) ---
 all_quotes = [
-    "“നിക്ഷേപം ഒരു ഒറ്റ തീരുമാനം അല്ല, ജീവിതകാല ശീലമാണ്.”",
-    "“സമ്പത്ത് പെട്ടെന്ന് ഉണ്ടാകുന്നില്ല; സ്ഥിരതയോടെ വളരുന്നു.”",
-    "“SIP തുടങ്ങുന്ന ദിവസം നിങ്ങളുടെ ഭാവി ആരംഭിക്കുന്നു”",
-    "“സമ്പത്ത് പണിയാൻ SIP, ജീവിക്കാൻ SWP”",
-    "“ഇന്ന് തുടങ്ങൂ, നാളേയ്ക്ക് വേണ്ടി.”"
+    "“Investing is not a one-time decision, it's a lifetime habit.”",
+    "“Wealth is not created overnight; it grows steadily.”",
+    "“The day you start SIP is the day your future begins.”",
+    "“Build wealth with SIP, live with SWP.”",
+    "“Start today, for tomorrow.”",
+    "“Time in the market beats timing the market.”",
+    "“Retirement is not the end, it's a new beginning. Plan well.”"
 ]
 
-# --- CORE LOGIC (V5 - Yearly Withdrawals) ---
-def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r):
-    """റിട്ടയർമെൻ്റ് കണക്കുകൂട്ടലുകളും വർഷം തോറും പിൻവലിക്കൽ ഷെഡ്യൂളും"""
-    # Basic Timeframes
+# --- CORE LOGIC (V6 - Legacy Amount Support) ---
+def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount):
+    """
+    Calculate retirement plan with legacy amount support
+    legacy_amount: Money left for heirs at life expectancy
+    """
+    # Timeframes
     years_to_retire = r_age - c_age
     ret_years = l_exp - r_age
     m_to_retire = years_to_retire * 12
     ret_months = ret_years * 12
 
-    # 1. Future Monthly Expense (Inflation adjusted)
-    future_monthly_exp = c_exp * ((1 + inf_rate/100) ** years_to_retire)
+    # 1. Future Monthly Expense (Unrounded for accuracy)
+    future_monthly_exp_raw = c_exp * ((1 + inf_rate/100) ** years_to_retire)
+    
+    # ✅ FIXED: Consistent rounding - calculate annual first
+    base_annual_withdrawal = future_monthly_exp_raw * 12
+    base_annual_withdrawal_rounded = round(base_annual_withdrawal)
+    future_monthly_exp = round(future_monthly_exp_raw)  # For display
 
     # 2. Real Rate of Return (Post-Retirement)
     annual_real_rate = ((1 + post_ret_r/100) / (1 + inf_rate/100)) - 1
     monthly_real_rate = (1 + annual_real_rate)**(1/12) - 1
 
-    # 3. Accurate Corpus Required (Annuity formula)
+    # 3. Adjusted Corpus Required (Annuity + Legacy)
     if monthly_real_rate != 0:
-        corp_req = future_monthly_exp * (1 - (1 + monthly_real_rate) ** (-ret_months)) / monthly_real_rate
+        # PV of annuity + PV of legacy amount
+        corp_req_annuity = base_annual_withdrawal * (1 - (1 + monthly_real_rate) ** (-ret_months)) / monthly_real_rate
+        corp_req_legacy = legacy_amount / ((1 + monthly_real_rate) ** ret_months)
+        corp_req = corp_req_annuity + corp_req_legacy
     else:
-        corp_req = future_monthly_exp * ret_months
+        corp_req = base_annual_withdrawal * ret_months + legacy_amount
 
     # 4. Projected Savings (Pre-Retirement Growth)
     pre_r_monthly = (1 + pre_ret_r/100)**(1/12) - 1
     
-    # Existing corpus future value
     existing_future = e_corp * ((1 + pre_r_monthly) ** m_to_retire)
     
-    # SIP future value (Beginning of period)
     if pre_r_monthly > 0:
         sip_future = c_sav * (((1 + pre_r_monthly) ** m_to_retire - 1) / pre_r_monthly) * (1 + pre_r_monthly)
     else:
@@ -73,22 +83,18 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     req_lumpsum = 0
     if shortfall > 0:
         if m_to_retire > 0:
-            # Additional SIP needed
             if pre_r_monthly > 0:
                 req_sip = (shortfall * pre_r_monthly) / (((1 + pre_r_monthly) ** m_to_retire - 1) * (1 + pre_r_monthly))
             else:
                 req_sip = shortfall / m_to_retire
             
-            # Additional Lumpsum needed (Today's Value)
             req_lumpsum = shortfall / ((1 + pre_r_monthly) ** m_to_retire)
 
-    # ✅ NEW: Calculate yearly withdrawal schedule (Inflation-adjusted)
+    # ✅ NEW: Yearly withdrawal schedule (consistently calculated)
     annual_withdrawals = []
-    base_annual_withdrawal = future_monthly_exp * 12
-    
-    for year in range(ret_years):  # 0 to ret_years-1
+    for year in range(ret_years):
         age = r_age + year
-        withdrawal = base_annual_withdrawal * ((1 + inf_rate/100) ** year)
+        withdrawal = base_annual_withdrawal_rounded * ((1 + inf_rate/100) ** year)
         monthly_eq = withdrawal / 12
         
         annual_withdrawals.append({
@@ -99,23 +105,24 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         })
 
     return {
-        "future_exp": round(future_monthly_exp),
+        "future_exp": future_monthly_exp,  # Monthly
+        "future_exp_annual": base_annual_withdrawal_rounded,  # Annual
         "corp_req": round(corp_req),
         "total_sav": total_savings,
         "shortfall": round(shortfall),
         "req_sip": round(req_sip),
         "req_lumpsum": round(req_lumpsum),
         "annual_withdrawals": annual_withdrawals,
-        "ret_years": ret_years
+        "ret_years": ret_years,
+        "legacy_amount": legacy_amount  # ✅ NEW: Legacy amount
     }
 
-# --- STREAMLIT INTERFACE ---
+# --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9CA3AF;'>Plan Your Financial Freedom</p>", unsafe_allow_html=True)
 
-# --- INPUT SECTION (Streamlit Native) ---
+# --- INPUT SECTION ---
 with st.container():
-    # ✅ Use markdown for visual styling only, not structure
     st.markdown('<div style="background-color: #1A2233; padding: 25px; border-radius: 10px; border: 1px solid #374151;">', 
                 unsafe_allow_html=True)
     
@@ -123,39 +130,40 @@ with st.container():
 
     with col1:
         st.markdown("### 👤 Personal Details")
-        current_age = st.number_input("നിലവിലെ പ്രായം (Current Age)", value=30, min_value=0, max_value=100, step=1)
-        retire_age = st.number_input("വിരമിക്കുന്ന പ്രായം (Retirement Age)", value=60, min_value=current_age+1, max_value=110, step=1)
-        life_exp = st.number_input("പ്രതീക്ഷിക്കുന്ന ആയുസ്സ് (Life Expectancy)", value=85, min_value=retire_age+1, max_value=120, step=1)
-        current_expense = st.number_input("പ്രതിമാസ ചെലവ് (Monthly Expense ₹)", value=30000, min_value=1, step=500)
+        current_age = st.number_input("Current Age", value=30, min_value=0, max_value=100, step=1)
+        retire_age = st.number_input("Retirement Age", value=60, min_value=current_age+1, max_value=110, step=1)
+        life_exp = st.number_input("Life Expectancy", value=85, min_value=retire_age+1, max_value=120, step=1)
+        current_expense = st.number_input("Current Monthly Expenses (₹)", value=30000, min_value=1, step=500)
 
     with col2:
         st.markdown("### 💰 Investment Details")
-        inf_rate = st.number_input("വിലക്കയറ്റം (Expected Inflation %)", value=6.0, step=0.1, format="%.1f")
-        existing_corp = st.number_input("നിലവിലെ സമ്പാദ്യം (Existing Corpus ₹)", value=0, min_value=0, step=5000)
-        current_sip = st.number_input("നിലവിലെ SIP തുക (Current Monthly SIP ₹)", value=0, min_value=0, step=100)
-        pre_ret_rate = st.number_input("വിരമിക്കുന്നത് വരെയുള്ള റിട്ടേൺ (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
-        post_ret_rate = st.number_input("വിരമിച്ച ശേഷമുള്ള റിട്ടേൺ (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
+        inf_rate = st.number_input("Expected Inflation (%)", value=6.0, step=0.1, format="%.1f")
+        existing_corp = st.number_input("Existing Corpus (₹)", value=0, min_value=0, step=5000)
+        current_sip = st.number_input("Current Monthly SIP (₹)", value=0, min_value=0, step=100)
+        pre_ret_rate = st.number_input("Pre-Retirement Return (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
+        post_ret_rate = st.number_input("Post-Retirement Return (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
+        st.markdown("")  # Spacing
+        legacy_amount = st.number_input("Legacy Amount for Heirs (₹) [Amount left at Life Expectancy]", value=0, min_value=0, step=100000)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CALCULATE BUTTON ---
-if st.button("CALCULATE MY RETIREMENT PLAN"):
+if st.button("CALCULATE RETIREMENT PLAN"):
     # Validation
     if current_age >= retire_age or retire_age >= life_exp:
-        st.error("❌ ദയവായി ശരിയായ പ്രായം നൽകുക: വിരമിക്കൽ പ്രായം > നിലവിൽ പ്രായം, ആയുസ്സ് > വിരമിക്കൽ പ്രായം.")
+        st.error("❌ Invalid ages: Retirement Age must be > Current Age and Life Expectancy must be > Retirement Age.")
     elif pre_ret_rate <= 0 or post_ret_rate <= 0:
-        st.error("❌ റിട്ടേൺ റേറ്റ് 0%-ൽ കൂടുതലായിരിക്കണം.")
+        st.error("❌ Return rates must be greater than 0%.")
     elif current_expense <= 0:
-        st.error("❌ ചെലവ് തുക 0-ൽ കൂടുതലായിരിക്കണം.")
+        st.error("❌ Expenses must be greater than ₹0.")
     else:
-        # Progress indicator
-        with st.spinner('കണക്കുകൾ വിശകലനം ചെയ്യുന്നു...'):
-            time.sleep(1)  # User experience improvement
+        with st.spinner('Analyzing your retirement plan...'):
+            time.sleep(1)  # Smooth UX
             
             # ✅ Core calculation
             res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, 
                                             inf_rate, current_sip, existing_corp, 
-                                            pre_ret_rate, post_ret_rate)
+                                            pre_ret_rate, post_ret_rate, legacy_amount)
             
             st.divider()
             
@@ -166,7 +174,7 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
                 st.markdown(f'<h2 class="result-text">₹ {res["future_exp"]:,}</h2>', unsafe_allow_html=True)
                 
                 st.write(f"**Yearly Withdrawal Needed (at Retirement):**")
-                st.markdown(f'<h2 class="result-text">₹ {res["future_exp"] * 12:,}</h2>', unsafe_allow_html=True)
+                st.markdown(f'<h2 class="result-text">₹ {res["future_exp_annual"]:,}</h2>', unsafe_allow_html=True)
                 
                 st.write(f"**Required Retirement Corpus:**")
                 st.markdown(f'<h2 class="result-text">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
@@ -175,29 +183,33 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
                 st.write(f"**Projected Savings at Retirement:**")
                 st.markdown(f'<h2 class="result-white">₹ {res["total_sav"]:,}</h2>', unsafe_allow_html=True)
                 
-                st.write(f"**Shortfall (കുറവ് വരുന്ന തുക):**")
+                st.write(f"**Shortfall:**")
                 sh_color_class = "result-text" if res["shortfall"] <= 0 else "result-red"
                 st.markdown(f'<h2 class="{sh_color_class}">₹ {res["shortfall"]:,}</h2>', unsafe_allow_html=True)
+                
+                # ✅ NEW: Legacy amount display
+                if res["legacy_amount"] > 0:
+                    st.write(f"**Legacy Amount for Heirs:**")
+                    st.markdown(f'<h2 class="result-text">₹ {res["legacy_amount"]:,}</h2>', unsafe_allow_html=True)
 
             st.divider()
 
             # --- ACTION ITEMS ---
             if res["shortfall"] > 0:
-                st.warning("⚠️ നിങ്ങളുടെ ലക്ഷ്യത്തിലെത്താൻ അധികമായി താഴെ പറയുന്നവയിൽ ഒന്ന് ചെയ്യേണ്ടതുണ്ട്:")
+                st.warning("⚠️ To meet your retirement goals, you need additional investment:")
                 st.markdown(f"🔹 **Additional Monthly SIP:** <span class='result-text'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
-                st.markdown(f"🔹 **OR Additional Lumpsum (ഇന്ന് നിക്ഷേപിക്കാൻ):** <span class='result-text'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
+                st.markdown(f"🔹 **OR Additional Lumpsum (Today):** <span class='result-text'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
             else:
-                st.success("✅ അഭിനന്ദനങ്ങൾ! നിങ്ങളുടെ നിലവിലെ നിക്ഷേപം റിട്ടയർമെന്റിന് ധാരാളമാണ്.")
+                st.success("✅ Congratulations! Your current investments are sufficient for retirement.")
 
             # ✅ NEW: YEARLY WITHDRAWAL SCHEDULE ---
             st.markdown("---")
-            st.markdown(f"### 📅 **വിരമിക്കൽ കാലത്തെ വർഷം തോറും പിൻവലിക്കൽ തുക**")
-            st.markdown(f"**കാലാവധി:** {int(retire_age)} മുതൽ {int(life_exp)} വയസ്സ് വരെ ({res['ret_years']} വർഷം)")
+            st.markdown(f"### 📅 **Yearly Withdrawal Schedule (Inflation-Adjusted)**")
+            st.markdown(f"**Period:** Age {int(retire_age)} to {int(life_exp)} ({res['ret_years']} years)")
             
-            # Create DataFrame
             withdrawal_df = pd.DataFrame(res["annual_withdrawals"])
             
-            # ✅ FIXED: Streamlit native formatting (No pandas styling)
+            # ✅ Display table (Streamlit native formatting)
             try:
                 st.dataframe(
                     withdrawal_df,
@@ -211,11 +223,11 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
                     hide_index=True
                 )
             except Exception as e:
-                st.error("⚠️ ഡാറ്റ പ്രദർശിപ്പിക്കാൻ കഴിയില്ല. സിമ്പിൾ ടേബിൾ കാണിക്കുന്നു.")
-                st.write(withdrawal_df)  # Fallback
+                st.error("⚠️ Could not display formatted table. Showing raw data.")
+                st.write(withdrawal_df)
             
-            # ✅ Chart (Simple & Reliable)
-            st.markdown("#### 📈 വർഷം തോറും പിൻവലിക്കൽ ദൃശ്യവൽക്കരണം")
+            # ✅ Chart
+            st.markdown("#### 📈 Withdrawal Growth Chart")
             try:
                 st.line_chart(
                     withdrawal_df.set_index("Age")["Annual_Withdrawal"],
@@ -223,29 +235,85 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
                     use_container_width=True
                 )
             except:
-                st.info("ചാർട്ട് പ്രദർശിപ്പിക്കാൻ കഴിയില്ല.")
+                st.info("Chart cannot be displayed.")
             
             # ✅ Summary statistics
-            st.markdown("#### 📊 സംക്ഷിപ്ത വിവരങ്ങൾ")
+            st.markdown("#### 📊 Summary Statistics")
             col_stats1, col_stats2, col_stats3 = st.columns(3)
             with col_stats1:
-                st.metric("ആകെ പിൻവലിക്കൽ വർഷം", f"{res['ret_years']}")
+                st.metric("Total Withdrawal Years", f"{res['ret_years']}")
             with col_stats2:
-                st.metric("ആദ്യവർഷത്തെ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][0]['Annual_Withdrawal']:,}")
+                st.metric("First Year Withdrawal", f"₹ {res['annual_withdrawals'][0]['Annual_Withdrawal']:,}")
             with col_stats3:
-                st.metric("അവസാന വർഷത്തെ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][-1]['Annual_Withdrawal']:,}")
-            
-            # Download button
-            csv = withdrawal_df.to_csv(index=False)
-            st.download_button(
-                label="📥 വർഷം തോറും പിൻവലിക്കൽ ഡാറ്റ ഡൗൺലോഡ് ചെയ്യുക (CSV)",
-                data=csv,
-                file_name=f"retirement_withdrawals_age_{current_age}.csv",
-                mime="text/csv"
-            )
+                st.metric("Last Year Withdrawal", f"₹ {res['annual_withdrawals'][-1]['Annual_Withdrawal']:,}")
             
             # Random quote
             st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
+# --- DOWNLOAD FULL RESULTS (Excel) ---
+# ✅ NEW: Prepare comprehensive Excel download
+if 'res' in locals() and st.button("📥 DOWNLOAD FULL RESULTS (EXCEL)"):
+    # Create a comprehensive Excel file
+    output = io.BytesIO()
+    
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Sheet 1: Summary
+        summary_data = {
+            'Parameter': [
+                'Current Age', 'Retirement Age', 'Life Expectancy',
+                'Current Monthly Expenses', 'Expected Inflation (%)',
+                'Existing Corpus', 'Current Monthly SIP',
+                'Pre-Retirement Return (%)', 'Post-Retirement Return (%)',
+                'Legacy Amount for Heirs'
+            ],
+            'Value': [
+                current_age, retire_age, life_exp,
+                f"₹ {current_expense:,}", inf_rate,
+                f"₹ {existing_corp:,}", f"₹ {current_sip:,}",
+                pre_ret_rate, post_ret_rate,
+                f"₹ {res['legacy_amount']:,}"
+            ]
+        }
+        summary_df = pd.DataFrame(summary_data)
+        
+        results_data = {
+            'Metric': [
+                'Monthly Expense at Retirement',
+                'Yearly Withdrawal at Retirement',
+                'Required Retirement Corpus',
+                'Projected Savings at Retirement',
+                'Shortfall',
+                'Additional Monthly SIP Needed',
+                'Additional Lumpsum Needed'
+            ],
+            'Amount (₹)': [
+                res['future_exp'],
+                res['future_exp_annual'],
+                res['corp_req'],
+                res['total_sav'],
+                res['shortfall'],
+                res['req_sip'],
+                res['req_lumpsum']
+            ]
+        }
+        results_df = pd.DataFrame(results_data)
+        
+        # Combine into one sheet
+        summary_df.to_excel(writer, sheet_name='Summary', index=False, startrow=0)
+        results_df.to_excel(writer, sheet_name='Summary', index=False, startrow=len(summary_df) + 3)
+        
+        # Sheet 2: Yearly Withdrawal Schedule
+        withdrawal_df = pd.DataFrame(res['annual_withdrawals'])
+        withdrawal_df.to_excel(writer, sheet_name='Withdrawal Schedule', index=False)
+    
+    # Download button
+    excel_data = output.getvalue()
+    st.download_button(
+        label="📥 Click to Download Excel File",
+        data=excel_data,
+        file_name=f"retirement_plan_age_{current_age}_{date.today().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # --- FOOTER ---
-st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF; margin-top: 30px;'>* ഈ കണക്കുകൾ നൽകിയിട്ടുള്ള അനുമാനങ്ങളെ അടിസ്ഥാനമാക്കിയുള്ളതാണ്. മാർക്കറ്റ് റിസ്കുകൾ ബാധകമാണ്.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF; margin-top: 30px;'>* Results based on provided assumptions. Market risks apply. Consult a financial advisor.</p>", unsafe_allow_html=True)

@@ -4,38 +4,37 @@ import random
 import time
 from datetime import date
 import io
+import numpy as np
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro", layout="wide")
 
-# --- CUSTOM CSS (English Only) ---
+# --- CUSTOM CSS ---
 st.markdown("""<style>
 .main { background-color: #0E1116; color: #E5E7EB; }
 .stApp { background-color: #0E1116; }
 .result-text { color: #22C55E; font-family: 'Courier New', monospace; font-weight: bold; }
 .result-white { color: white; font-family: 'Courier New', monospace; font-weight: bold; }
 .result-red { color: #ef4444; font-family: 'Courier New', monospace; font-weight: bold; }
+.result-warn { color: #f59e0b; font-family: 'Courier New', monospace; font-weight: bold; }
 .quote-text { color: #22C55E; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
 .stButton>button { background-color: #22C55E; color: white; width: 100%; border: none; font-weight: bold; height: 3.5em; border-radius: 8px; }
 .stButton>button:hover { background-color: #16a34a; }
 </style>""", unsafe_allow_html=True)
 
-# --- MOTIVATION QUOTES (English) ---
+# --- MOTIVATION QUOTES ---
 all_quotes = [
     "“Investing is not a one-time decision, it's a lifetime habit.”",
     "“Wealth is not created overnight; it grows steadily.”",
     "“The day you start SIP is the day your future begins.”",
     "“Build wealth with SIP, live with SWP.”",
-    "“Start today, for tomorrow.”",
-    "“Time in the market beats timing the market.”",
-    "“Retirement is not the end, it's a new beginning. Plan well.”"
+    "“Start today, for tomorrow.”"
 ]
 
-# --- CORE LOGIC (V8 - 100% Accurate) ---
+# --- CORE LOGIC (V9 - Smart Validation) ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount):
     """
-    Calculate retirement plan with legacy amount support
-    Returns dictionary with all calculations
+    Calculate retirement plan with smart validation for real return
     """
     # Timeframes
     years_to_retire = r_age - c_age
@@ -43,49 +42,44 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     m_to_retire = years_to_retire * 12
     ret_months = ret_years * 12
 
-    # 1. Future Monthly Expense (Unrounded for internal calculations)
+    # 1. Future Monthly Expense
     future_monthly_exp_unrounded = c_exp * ((1 + inf_rate/100) ** years_to_retire)
-    
-    # ✅ FIXED: Calculate annual withdrawal FIRST, then round consistently
-    base_annual_withdrawal = future_monthly_exp_unrounded * 12
-    
-    # Round for display purposes only
     future_monthly_exp = round(future_monthly_exp_unrounded)
-    base_annual_withdrawal_rounded = round(base_annual_withdrawal)
+    base_annual_withdrawal = future_monthly_exp_unrounded * 12
 
-    # 2. Real Rate of Return (Post-Retirement)
+    # 2. Real Rate of Return
     annual_real_rate = ((1 + post_ret_r/100) / (1 + inf_rate/100)) - 1
     monthly_real_rate = (1 + annual_real_rate)**(1/12) - 1
+    
+    # ✅ SMART VALIDATION & CORRECTION
+    MIN_REAL_RETURN = 0.01  # 1% minimum
+    real_return_warning = None
+    
+    if annual_real_rate < MIN_REAL_RETURN:
+        real_return_warning = f"Real return is only {annual_real_rate*100:.2f}% (too low!)"
+        # Use minimum real return to prevent corpus explosion
+        annual_real_rate = MIN_REAL_RETURN
+        monthly_real_rate = (1 + annual_real_rate)**(1/12) - 1
 
-    # ✅ CRITICAL VALIDATION: Real rate must be positive
-    if annual_real_rate <= 0.0001:  # Allow tiny margin for floating point
-        return {
-            "error": f"Post-retirement return ({post_ret_r}%) must be higher than inflation ({inf_rate}%) for sustainable withdrawals."
-        }
-
-    # 3. Adjusted Corpus Required (Annuity + Legacy)
-    # ✅ FIXED: Separate calculations for clarity and precision
+    # 3. Corpus Required
     if monthly_real_rate != 0:
-        # PV of annuity (withdrawals)
+        # PV of annuity
         corp_req_annuity = base_annual_withdrawal * (1 - (1 + monthly_real_rate) ** (-ret_months)) / monthly_real_rate
         
-        # PV of legacy amount (only if > 0)
+        # PV of legacy
         corp_req_legacy = 0.0
         if legacy_amount > 0:
             corp_req_legacy = legacy_amount / ((1 + monthly_real_rate) ** ret_months)
         
         corp_req = corp_req_annuity + corp_req_legacy
     else:
-        # If real return is 0, simple calculation
         corp_req = base_annual_withdrawal * ret_months + legacy_amount
 
-    # 4. Projected Savings (Pre-Retirement Growth)
+    # 4. Projected Savings
     pre_r_monthly = (1 + pre_ret_r/100)**(1/12) - 1
     
-    # Existing corpus future value
     existing_future = e_corp * ((1 + pre_r_monthly) ** m_to_retire)
     
-    # SIP future value (beginning of period)
     if pre_r_monthly > 0:
         sip_future = c_sav * (((1 + pre_r_monthly) ** m_to_retire - 1) / pre_r_monthly) * (1 + pre_r_monthly)
     else:
@@ -93,7 +87,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         
     total_savings = max(0, round(existing_future + sip_future))
 
-    # 5. Shortfall & Additional Requirements
+    # 5. Shortfall & Requirements
     shortfall = max(0.0, corp_req - total_savings)
     
     req_sip = 0
@@ -106,11 +100,13 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         
         req_lumpsum = shortfall / ((1 + pre_r_monthly) ** m_to_retire)
 
-    # 6. Yearly withdrawal schedule (consistently calculated)
+    # 6. Yearly Withdrawals
     annual_withdrawals = []
+    base_annual_rounded = round(base_annual_withdrawal)
+    
     for year in range(ret_years):
         age = r_age + year
-        withdrawal = base_annual_withdrawal_rounded * ((1 + inf_rate/100) ** year)
+        withdrawal = base_annual_rounded * ((1 + inf_rate/100) ** year)
         monthly_eq = withdrawal / 12
         
         annual_withdrawals.append({
@@ -121,8 +117,8 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         })
 
     return {
-        "future_exp": future_monthly_exp,  # Monthly for display
-        "future_exp_annual": base_annual_withdrawal_rounded,  # Annual for display
+        "future_exp": future_monthly_exp,
+        "future_exp_annual": base_annual_rounded,
         "corp_req": round(corp_req),
         "total_sav": total_savings,
         "shortfall": round(shortfall),
@@ -130,7 +126,9 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         "req_lumpsum": round(req_lumpsum),
         "annual_withdrawals": annual_withdrawals,
         "ret_years": ret_years,
-        "legacy_amount": legacy_amount
+        "legacy_amount": legacy_amount,
+        "real_return": annual_real_rate * 100,
+        "real_return_warning": real_return_warning
     }
 
 # --- MAIN APP ---
@@ -159,10 +157,9 @@ with st.container():
         pre_ret_rate = st.number_input("Pre-Retirement Return (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
         post_ret_rate = st.number_input("Post-Retirement Return (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
         
-        # ✅ NEW: Legacy amount with clear help text
         st.markdown("### 🏦 Legacy Planning")
         legacy_amount = st.number_input("Legacy Amount for Heirs (₹)", value=0, min_value=0, step=100000, 
-                                        help="Amount you wish to leave for your heirs at life expectancy.₹0 means no legacy.")
+                                        help="Amount left for heirs at life expectancy. ₹0 = no legacy.")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -206,7 +203,12 @@ if st.button("CALCULATE RETIREMENT PLAN"):
                 st.markdown(f'<h2 class="result-text">₹ {res["future_exp_annual"]:,}</h2>', unsafe_allow_html=True)
                 
                 st.write(f"**Required Retirement Corpus:**")
-                st.markdown(f'<h2 class="result-text">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
+                # ✅ Show warning if corpus is high
+                if res["corp_req"] > 100000000:  # > 10 crore
+                    st.markdown(f'<h2 class="result-warn">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
+                    st.warning(f"⚠️ Corpus is very high due to low real return ({res['real_return']:.2f}%)")
+                else:
+                    st.markdown(f'<h2 class="result-text">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
 
             with r2:
                 st.write(f"**Projected Savings at Retirement:**")
@@ -237,11 +239,12 @@ if st.button("CALCULATE RETIREMENT PLAN"):
             # --- YEARLY WITHDRAWAL SCHEDULE ---
             st.markdown("---")
             st.markdown(f"### 📅 **Yearly Withdrawal Schedule (Inflation-Adjusted)**")
+            st.markdown(f"**Real Return Used:** {res['real_return']:.2f}% {('(' + res['real_return_warning'] + ')' if res['real_return_warning'] else '')}")
             st.markdown(f"**Period:** Age {int(retire_age)} to {int(life_exp)} ({res['ret_years']} years)")
             
             withdrawal_df = pd.DataFrame(res["annual_withdrawals"])
             
-            # ✅ FIXED: Display table with proper formatting
+            # Display table
             st.dataframe(
                 withdrawal_df,
                 use_container_width=True,
@@ -275,64 +278,5 @@ if st.button("CALCULATE RETIREMENT PLAN"):
             # Quote
             st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
-# --- DOWNLOAD FULL RESULTS (Excel) ---
-# ✅ FIXED: Excel download button (moved outside to prevent recreation)
-if 'res' in locals() and not isinstance(res, dict) or (isinstance(res, dict) and "error" not in res):
-    if st.button("📥 DOWNLOAD FULL RESULTS (EXCEL)"):
-        # Create comprehensive Excel
-        output = io.BytesIO()
-        
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Sheet 1: Summary (Inputs + Results)
-            summary_inputs = {
-                'Parameter': [
-                    'Current Age', 'Retirement Age', 'Life Expectancy',
-                    'Current Monthly Expenses', 'Expected Inflation (%)',
-                    'Existing Corpus (₹)', 'Current Monthly SIP (₹)',
-                    'Pre-Retirement Return (%)', 'Post-Retirement Return (%)',
-                    'Legacy Amount for Heirs (₹)'
-                ],
-                'Value': [
-                    current_age, retire_age, life_exp,
-                    current_expense, inf_rate,
-                    existing_corp, current_sip,
-                    pre_ret_rate, post_ret_rate,
-                    legacy_amount
-                ]
-            }
-            summary_results = {
-                'Metric': [
-                    'Monthly Expense at Retirement (₹)',
-                    'Yearly Withdrawal at Retirement (₹)',
-                    'Required Retirement Corpus (₹)',
-                    'Projected Savings at Retirement (₹)',
-                    'Shortfall (₹)',
-                    'Additional Monthly SIP Needed (₹)',
-                    'Additional Lumpsum Needed (₹)'
-                ],
-                'Amount': [
-                    res['future_exp'],
-                    res['future_exp_annual'],
-                    res['corp_req'],
-                    res['total_sav'],
-                    res['shortfall'],
-                    res['req_sip'],
-                    res['req_lumpsum']
-                ]
-            }
-            
-            pd.DataFrame(summary_inputs).to_excel(writer, sheet_name='Summary', index=False, startrow=0)
-            pd.DataFrame(summary_results).to_excel(writer, sheet_name='Summary', index=False, startrow=len(summary_inputs) + 2)
-            
-            # Sheet 2: Withdrawal Schedule
-            withdrawal_df = pd.DataFrame(res['annual_withdrawals'])
-            withdrawal_df.to_excel(writer, sheet_name='Withdrawal Schedule', index=False)
-        
-        # Download
-        excel_data = output.getvalue()
-        st.download_button(
-            label="📥 Click to Download",
-            data=excel_data,
-            file_name=f"retirement_plan_{current_age}_{date.today().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+# --- FOOTER ---
+st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF; margin-top: 30px;'>* Results based on provided assumptions. Market risks apply. Consult a financial advisor.</p>", unsafe_allow_html=True)

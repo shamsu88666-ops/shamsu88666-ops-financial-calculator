@@ -8,16 +8,66 @@ import io
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS (Optimized for both Light & Dark Mode) ---
 st.markdown("""
     <style>
-    .main { background-color: #0E1116; color: #E5E7EB; }
-    .stApp { background-color: #0E1116; }
-    .input-card { background-color: #1A2233; padding: 25px; border-radius: 10px; border: 1px solid #374151; }
-    .result-text { color: #22C55E; font-family: 'Courier New', monospace; font-weight: bold; }
-    .quote-text { color: #22C55E; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
-    .stButton>button { background-color: #22C55E; color: white; width: 100%; border: none; font-weight: bold; height: 3.5em; border-radius: 8px; }
-    .stButton>button:hover { background-color: #16a34a; }
+    /* Force Dark Theme Background for all modes */
+    .stApp {
+        background-color: #0E1116 !important;
+        color: #E5E7EB !important;
+    }
+    .main {
+        background-color: #0E1116 !important;
+    }
+    /* Input Card Styling */
+    .input-card {
+        background-color: #1A2233 !important;
+        padding: 25px;
+        border-radius: 10px;
+        border: 1px solid #374151;
+        color: #E5E7EB !important;
+    }
+    /* Results Styling */
+    .result-text {
+        color: #22C55E !important;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+    /* Quote Styling */
+    .quote-text {
+        color: #22C55E !important;
+        font-style: italic;
+        font-weight: bold;
+        text-align: center;
+        display: block;
+        margin-top: 20px;
+    }
+    /* Buttons */
+    .stButton>button {
+        background-color: #22C55E !important;
+        color: white !important;
+        width: 100%;
+        border: none;
+        font-weight: bold;
+        height: 3.5em;
+        border-radius: 8px;
+    }
+    .stButton>button:hover {
+        background-color: #16a34a !important;
+        color: white !important;
+    }
+    /* Text Input Labels & Color Fix */
+    label, p, span, h1, h2, h3 {
+        color: #E5E7EB !important;
+    }
+    /* Metric label color fix */
+    [data-testid="stMetricLabel"] {
+        color: #9CA3AF !important;
+    }
+    /* Metric value color fix */
+    [data-testid="stMetricValue"] {
+        color: #FFFFFF !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -146,7 +196,7 @@ if st.button("Calculate"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
 
-# ✅ PROFESSIONAL EXCEL DOWNLOAD WITH DISCLAIMER AT TOP
+# ✅ EXCEL DOWNLOAD WITH DISCLAIMER AT TOP
 if 'res' in st.session_state and st.session_state.res is not None:
     res = st.session_state.res
     u_name = st.session_state.user_name

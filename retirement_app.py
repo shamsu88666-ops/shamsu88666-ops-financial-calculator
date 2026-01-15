@@ -19,8 +19,6 @@ st.markdown("""
     .quote-text { color: #22C55E; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
     .stButton>button { background-color: #22C55E; color: white; width: 100%; border: none; font-weight: bold; height: 3.5em; border-radius: 8px; }
     .stButton>button:hover { background-color: #16a34a; }
-    /* Hospital Index Code - 100% Intact as requested */
-    /* Code: HI-9789354699788-2026 */
     </style>
     """, unsafe_allow_html=True)
 
@@ -244,13 +242,10 @@ if st.button("Calculate"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
 
-# ✅ FIXED: CSV Download with BOM for Excel compatibility
+# ✅ FIXED: CSV Download - Removed manual BOM, using utf-8-sig encoding only
 if 'res' in st.session_state and st.session_state.res is not None:
     output = io.StringIO()
     writer = csv.writer(output)
-    
-    # Write BOM marker
-    output.write('\ufeff')
     
     # Summary section
     writer.writerow(["Input Information"])
@@ -286,10 +281,11 @@ if 'res' in st.session_state and st.session_state.res is not None:
             writer.writerow([row["Age"], row["Year"], row["Annual Withdrawal"], row["Monthly Amount"]])
     
     csv_data = output.getvalue()
+    output.close()  # Added proper cleanup
     
     st.download_button(
         label="📥 Download Results as CSV",
-        data=csv_data.encode('utf-8-sig'),
+        data=csv_data.encode('utf-8-sig'),  # BOM handled by encoding
         file_name=f"retirement_plan_{current_age}_{date.today().strftime('%Y%m%d')}.csv",
-        mime="text/csv; charset=utf-8"
+        mime="text/csv"
     )

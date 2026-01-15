@@ -4,7 +4,6 @@ import random
 import time
 from datetime import date
 import io
-import numpy as np
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
@@ -58,9 +57,8 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     # Future expense at retirement (monthly)
     expense_at_retirement = c_exp * (1 + monthly_inf) ** months_to_retire
     
-    # CORRECT: PV of growing annuity (monthly basis)
-    if monthly_post_ret != monthly_inf:
-        # Using formula for growing annuity
+    # PV of growing annuity (monthly basis)
+    if abs(monthly_post_ret - monthly_inf) > 0.0001:
         pv_expenses = expense_at_retirement * (
             1 - ((1 + monthly_inf) / (1 + monthly_post_ret)) ** retirement_months
         ) / (monthly_post_ret - monthly_inf)
@@ -95,19 +93,16 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
             req_sip = shortfall / months_to_retire
             req_lumpsum = shortfall
     
-    # CORRECT: Monthly withdrawal simulation
+    # Monthly withdrawal simulation
     annual_withdrawals = []
     current_balance = corp_req
     
     for year in range(retirement_months // 12):
-        year_start_balance = current_balance
-        
         # Monthly expense for THIS year
         monthly_expense_this_year = expense_at_retirement * (1 + monthly_inf) ** (year * 12)
         
         # Deduct 12 months
         for month in range(12):
-            # Apply return, then deduct expense
             current_balance = (current_balance * (1 + monthly_post_ret)) - monthly_expense_this_year
         
         # Store annual data
@@ -153,7 +148,16 @@ with col2:
     current_sip = st.number_input("Current Monthly SIP (₹)", value=0, min_value=0, step=100)
     pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
     post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
-    legacy_amount = st.number_input("Legacy Amount - Today's Real Value (₹)", value=10000000, min_value=0, step=100000)
+    
+    # ✅ UPDATED WITH EXPLANATION
+    legacy_amount = st.number_input(
+        "Legacy Amount - Today's Real Value (₹)", 
+        value=0, 
+        min_value=0, 
+        step=100000,
+        help="""ഇന്നത്തെ വിലയിൽ നിങ്ങൾ ഭാവിയിൽ സംരക്ഷിക്കാൻ ആഗ്രഹിക്കുന്ന തുക. 
+        ഉദാഹരണം: ഇന്നത്തെ ₹1 കോടി, 6% ഇൻഫ്ലേഷനോടെ 55 വർഷം കഴിഞ്ഞാൽ ~₹27 കോടി ആയി സംരക്ഷിക്കപ്പെടും."""
+    )
 st.markdown('</div>', unsafe_allow_html=True)
 
 if st.button("Calculate"):
@@ -237,7 +241,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
         ]
         for i, (l, v) in enumerate(summary):
             worksheet.write(i+11, 3, l, normal_fmt)
-            worksheet.write(i+11, 4, v, currency_fmt if isinstance(v, (int, float)) and 'Legacy' not in l else normal_fmt if 'Legacy' in l and i < 6 else currency_fmt)
+            worksheet.write(i+11, 4, v, currency_fmt)
 
         # WITHDRAWAL SCHEDULE
         worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)

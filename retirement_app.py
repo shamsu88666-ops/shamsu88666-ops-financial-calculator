@@ -41,23 +41,18 @@ all_quotes = [
 
 # --- CORE LOGIC (100% MONTHLY BASIS) ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount_real):
-    # Time periods in MONTHS
     months_to_retire = (r_age - c_age) * 12
     retirement_months = (l_exp - r_age) * 12
     total_months = (l_exp - c_age) * 12
     
-    # Monthly rates
     monthly_inf = (1 + inf_rate/100) ** (1/12) - 1
     monthly_pre_ret = (1 + pre_ret_r/100) ** (1/12) - 1
     monthly_post_ret = (1 + post_ret_r/100) ** (1/12) - 1
     
-    # Legacy: Real value → Nominal value at death
     legacy_nominal = legacy_amount_real * (1 + monthly_inf) ** total_months
     
-    # Future expense at retirement (monthly)
     expense_at_retirement = c_exp * (1 + monthly_inf) ** months_to_retire
     
-    # PV of growing annuity (monthly basis)
     if abs(monthly_post_ret - monthly_inf) > 0.0001:
         pv_expenses = expense_at_retirement * (
             1 - ((1 + monthly_inf) / (1 + monthly_post_ret)) ** retirement_months
@@ -65,13 +60,10 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     else:
         pv_expenses = expense_at_retirement * retirement_months
     
-    # PV of legacy
     pv_legacy = legacy_nominal / (1 + monthly_post_ret) ** retirement_months if legacy_nominal > 0 else 0
     
-    # Total required corpus
     corp_req = pv_expenses + pv_legacy
     
-    # Project savings
     future_existing = e_corp * (1 + monthly_pre_ret) ** months_to_retire
     
     if monthly_pre_ret > 0:
@@ -82,7 +74,6 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     total_savings = future_existing + future_sip
     shortfall = max(0, corp_req - total_savings)
     
-    # Calculate required SIP/Lumpsum
     req_sip = 0
     req_lumpsum = 0
     if shortfall > 0 and months_to_retire > 0:
@@ -93,19 +84,15 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
             req_sip = shortfall / months_to_retire
             req_lumpsum = shortfall
     
-    # Monthly withdrawal simulation
     annual_withdrawals = []
     current_balance = corp_req
     
     for year in range(retirement_months // 12):
-        # Monthly expense for THIS year
         monthly_expense_this_year = expense_at_retirement * (1 + monthly_inf) ** (year * 12)
         
-        # Deduct 12 months
         for month in range(12):
             current_balance = (current_balance * (1 + monthly_post_ret)) - monthly_expense_this_year
         
-        # Store annual data
         annual_withdrawals.append({
             "Age": r_age + year,
             "Year": year + 1,
@@ -149,14 +136,24 @@ with col2:
     pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
     post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
     
-    # ✅ UPDATED WITH EXPLANATION
+    # ✅ PROMINENT LEGACY EXPLANATION
+    st.markdown("""
+        <div style='background-color: #1F2937; padding: 12px; border-radius: 8px; 
+                    border-left: 5px solid #22C55E; margin-bottom: 10px;'>
+            <p style='color: #E5E7EB; margin: 0; font-size: 14px;'>
+                <strong>💡 ലെഗസി എന്താണ്?</strong><br>
+                ഇന്നത്തെ വിലയിൽ നിങ്ങൾ ഭാവിയിൽ സംരക്ഷിക്കാൻ ആഗ്രഹിക്കുന്ന തുക. 
+                ഉദാ: ഇന്ന് ₹1 കോടി കൊടുത്താൽ, 6% ഇൻഫ്ലേഷനിൽ 55 വർഷത്തിനു ശേഷം ₹27 കോടി സംരക്ഷിക്കപ്പെടും.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     legacy_amount = st.number_input(
         "Legacy Amount - Today's Real Value (₹)", 
         value=0, 
         min_value=0, 
         step=100000,
-        help="""ഇന്നത്തെ വിലയിൽ നിങ്ങൾ ഭാവിയിൽ സംരക്ഷിക്കാൻ ആഗ്രഹിക്കുന്ന തുക. 
-        ഉദാഹരണം: ഇന്നത്തെ ₹1 കോടി, 6% ഇൻഫ്ലേഷനോടെ 55 വർഷം കഴിഞ്ഞാൽ ~₹27 കോടി ആയി സംരക്ഷിക്കപ്പെടും."""
+        help="നിങ്ങളുടെ ആശയങ്ങൾ അനുസരിച്ച് ഇന്നത്തെ മൂല്യം ഇവിടെ നൽകുക"
     )
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -241,7 +238,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
         ]
         for i, (l, v) in enumerate(summary):
             worksheet.write(i+11, 3, l, normal_fmt)
-            worksheet.write(i+11, 4, v, currency_fmt)
+            worksheet.write(i+11, 4, v, currency_fmt if isinstance(v, (int, float)) and i != 3 else normal_fmt if i == 3 else currency_fmt)
 
         # WITHDRAWAL SCHEDULE
         worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)

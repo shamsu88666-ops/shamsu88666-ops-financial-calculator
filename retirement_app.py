@@ -4,7 +4,7 @@ import random
 import time
 from datetime import date
 import io
-from fpdf import FPDF
+import csv
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
@@ -244,63 +244,52 @@ if st.button("കണക്കുകൂട്ടുക"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* അനുമാനങ്ങളെ അടിസ്ഥാനമാക്കിയുള്ളത്. മാർക്കറ്റ് റിസ്കുകൾ ബാധകം.</p>", unsafe_allow_html=True)
 
-# ✅ PDF Download Logic
+# ✅ FIXED: CSV Download with BOM for Excel compatibility
 if 'res' in st.session_state and st.session_state.res is not None:
-    res = st.session_state.res
+    output = io.StringIO()
+    writer = csv.writer(output)
     
-    # Create PDF in memory
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="Retirement Plan Summary Report", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(200, 10, txt=f"Date: {date.today().strftime('%d-%m-%Y')}", ln=True, align='C')
-    pdf.ln(10)
-
-    # Financial Summary
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "1. Financial Summary", ln=True)
-    pdf.set_font("Arial", size=11)
-    pdf.cell(0, 8, f"Monthly Expense at Retirement: INR {res['future_exp']:,}", ln=True)
-    pdf.cell(0, 8, f"Required Retirement Corpus: INR {res['corp_req']:,}", ln=True)
-    pdf.cell(0, 8, f"Projected Savings: INR {res['total_sav']:,}", ln=True)
-    pdf.cell(0, 8, f"Shortfall: INR {res['shortfall']:,}", ln=True)
+    # Write BOM marker
+    output.write('\ufeff')
     
-    if res["shortfall"] > 0:
-        pdf.set_text_color(220, 53, 69) # Red color
-        pdf.cell(0, 8, f"Additional Monthly SIP Needed: INR {res['req_sip']:,}", ln=True)
-        pdf.cell(0, 8, f"Additional Lumpsum Needed Today: INR {res['req_lumpsum']:,}", ln=True)
-        pdf.set_text_color(0, 0, 0)
+    # Summary section
+    writer.writerow(["ഇൻപുട്ട് വിവരങ്ങൾ"])
+    writer.writerow(["പരാമീറ്റർ", "മൂല്യം"])
+    writer.writerow(["നിലവിലെ പ്രായം", current_age])
+    writer.writerow(["വിരമിക്കൽ പ്രായം", retire_age])
+    writer.writerow(["പ്രതീക്ഷിക്കുന്ന ആയുസ്സ്", life_exp])
+    writer.writerow(["പ്രതിമാസ ചെലവ് (₹)", current_expense])
+    writer.writerow(["വിലക്കയറ്റം (%)", inf_rate])
+    writer.writerow(["നിലവിലെ സമ്പാദ്യം (₹)", existing_corp])
+    writer.writerow(["മാസ നിക്ഷേപം - SIP (₹)", current_sip])
+    writer.writerow(["വിരമിക്കൽ വരെയുള്ള returns (%)", pre_ret_rate])
+    writer.writerow(["വിരമിച്ച ശേഷമുള്ള returns (%)", post_ret_rate])
+    writer.writerow(["പിന്തലമുറയ്ക്ക് തുക (₹)", legacy_amount])
+    writer.writerow([])
     
-    pdf.ln(10)
-
-    # Yearly Schedule Table
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "2. Yearly Withdrawal Schedule", ln=True)
-    pdf.set_font("Arial", 'B', 10)
+    writer.writerow(["ഫലങ്ങൾ"])
+    writer.writerow(["കണക്ക്", "തുക (₹)"])
+    writer.writerow(["വിരമിക്കുമ്പോഴത്തെ പ്രതിമാസ ചെലവ്", st.session_state.res['future_exp']])
+    writer.writerow(["വാർഷിക പിൻവലിക്കൽ", st.session_state.res['future_exp'] * 12])
+    writer.writerow(["ആവശ്യമായ റിട്ടയർമെന്റ് കോർപസ്", st.session_state.res['corp_req']])
+    writer.writerow(["കണക്കാക്കപ്പെട്ട സമ്പാദ്യം", st.session_state.res['total_sav']])
+    writer.writerow(["കുറവ്", st.session_state.res['shortfall']])
+    writer.writerow(["അധിക SIP ആവശ്യം", st.session_state.res['req_sip']])
+    writer.writerow(["അധിക lumpsum ആവശ്യം", st.session_state.res['req_lumpsum']])
+    writer.writerow([])
     
-    # Table Header
-    pdf.cell(30, 8, "Age", 1)
-    pdf.cell(30, 8, "Year", 1)
-    pdf.cell(60, 8, "Annual Withdrawal", 1)
-    pdf.cell(60, 8, "Monthly Amount", 1)
-    pdf.ln()
-
-    # Table Body
-    pdf.set_font("Arial", size=10)
-    for row in res['annual_withdrawals']:
-        pdf.cell(30, 8, str(row["പ്രായം"]), 1)
-        pdf.cell(30, 8, str(row["വർഷം"]), 1)
-        pdf.cell(60, 8, f"INR {row['വർഷിക പിൻവലിക്കൽ']:,}", 1)
-        pdf.cell(60, 8, f"INR {row['മാസിക തുക']:,}", 1)
-        pdf.ln()
-
-    # Output to bytes
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    # Yearly schedule
+    if 'annual_withdrawals' in st.session_state.res:
+        writer.writerow(["വാർഷിക പിൻവലിക്കൽ ഷെഡ്യൂൾ"])
+        writer.writerow(["പ്രായം", "വർഷം", "വർഷിക പിൻവലിക്കൽ (₹)", "മാസിക തുക (₹)"])
+        for row in st.session_state.res['annual_withdrawals']:
+            writer.writerow([row["പ്രായം"], row["വർഷം"], row["വർഷിക പിൻവലിക്കൽ"], row["മാസിക തുക"]])
+    
+    csv_data = output.getvalue()
     
     st.download_button(
-        label="📥 ഫലങ്ങൾ PDF ആയി ഡൗൺലോഡ് ചെയ്യുക",
-        data=pdf_bytes,
-        file_name=f"retirement_plan_{date.today().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
+        label="📥 ഫലങ്ങൾ CSV ആയി ഡൗൺലോഡ് ചെയ്യുക",
+        data=csv_data.encode('utf-8-sig'),
+        file_name=f"retirement_plan_{current_age}_{date.today().strftime('%Y%m%d')}.csv",
+        mime="text/csv; charset=utf-8"
     )

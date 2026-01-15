@@ -5,19 +5,20 @@ import time
 from datetime import date
 
 # --- APP CONFIGURATION ---
-st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
+st.set_page_config(page_title="Retirement Planner Pro - Yearly Withdrawals", layout="wide")
 
 # --- CUSTOM CSS ---
 st.markdown("""<style>
 .main { background-color: #0E1116; color: #E5E7EB; }
 .stApp { background-color: #0E1116; }
-/* ✅ FIXED: Added fallback fonts */
+/* ✅ FIXED: Better font fallbacks */
 .result-text { color: #22C55E; font-family: 'Courier New', 'Consolas', 'Monaco', monospace; font-weight: bold; }
 .result-white { color: white; font-family: 'Courier New', 'Consolas', 'Monaco', monospace; font-weight: bold; }
 .quote-text { color: #22C55E; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
 .stButton>button { background-color: #22C55E; color: white; width: 100%; border: none; font-weight: bold; height: 3.5em; border-radius: 8px; }
 .stButton>button:hover { background-color: #16a34a; }
-/* ✅ FIXED: Removed invalid HTML structure */
+/* ✅ NEW: Table styling */
+.withdrawal-table { background-color: #1A2233; border-radius: 10px; padding: 10px; }
 </style>""", unsafe_allow_html=True)
 
 # --- MOTIVATION QUOTES ---
@@ -29,7 +30,7 @@ all_quotes = [
     "“ഇന്ന് തുടങ്ങൂ, നാളേയ്ക്ക് വേണ്ടി.”"
 ]
 
-# --- CORE LOGIC (V4 - PRO) ---
+# --- CORE LOGIC (V5 - with Yearly Withdrawals) ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r):
     # Basic Timeframes
     years_to_retire = r_age - c_age
@@ -80,23 +81,40 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
             # Additional Lumpsum needed (Today's Value)
             req_lumpsum = shortfall / ((1 + pre_r_monthly) ** m_to_retire)
 
+    # ✅ NEW: Calculate yearly withdrawal schedule
+    annual_withdrawals = []
+    base_annual_withdrawal = future_monthly_exp * 12
+    
+    for year in range(ret_years + 1):  # Include all retirement years
+        age = r_age + year
+        withdrawal = base_annual_withdrawal * ((1 + inf_rate/100) ** year)
+        monthly_eq = withdrawal / 12
+        
+        annual_withdrawals.append({
+            "Age": age,
+            "Year": year + 1,
+            "Annual_Withdrawal": round(withdrawal),
+            "Monthly_Equivalent": round(monthly_eq)
+        })
+
     return {
         "future_exp": round(future_monthly_exp),
         "corp_req": round(corp_req),
         "total_sav": total_savings,
         "shortfall": round(shortfall),
         "req_sip": round(req_sip),
-        "req_lumpsum": round(req_lumpsum)
+        "req_lumpsum": round(req_lumpsum),
+        "annual_withdrawals": annual_withdrawals,  # ✅ New field
+        "ret_years": ret_years  # ✅ New field for display
     }
 
 # --- INTERFACE ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
 
-# ✅ FIXED: Use st.container() instead of HTML div
-input_container = st.container()
-with input_container:
-    # ✅ FIXED: Added background styling via Streamlit
+# --- INPUT SECTION ---
+# ✅ FIXED: Use proper Streamlit layout
+with st.container():
     st.markdown('<div style="background-color: #1A2233; padding: 25px; border-radius: 10px; border: 1px solid #374151;">', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -115,12 +133,12 @@ with input_container:
         current_sip = st.number_input("നിലവിലെ SIP തുക (Current Monthly SIP ₹)", value=0, min_value=0, step=100)
         pre_ret_rate = st.number_input("വിരമിക്കുന്നത് വരെയുള്ള റിട്ടേൺ (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
         post_ret_rate = st.number_input("വിരമിച്ച ശേഷമുള്ള റിട്ടേൺ (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
-
-    # ✅ FIXED: Close the div properly
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
+# --- CALCULATION BUTTON ---
 if st.button("CALCULATE MY RETIREMENT PLAN"):
-    # 1. Validation Logic
+    # Validation
     if current_age >= retire_age or retire_age >= life_exp:
         st.error("❌ ദയവായി ശരിയായ പ്രായം നൽകുക.")
     elif pre_ret_rate <= 0 or post_ret_rate <= 0:
@@ -134,28 +152,29 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
             
             st.divider()
             
+            # --- MAIN RESULTS ---
             r1, r2 = st.columns(2)
             with r1:
-                st.write(f"Monthly Expense at Age {int(retire_age)}:")
+                st.write(f"**Monthly Expense at Age {int(retire_age)}:**")
                 st.markdown(f'<h2 class="result-text">₹ {res["future_exp"]:,}</h2>', unsafe_allow_html=True)
                 
-                st.write(f"Yearly Withdrawal Needed (at Retirement):")
+                st.write(f"**Yearly Withdrawal Needed (at Retirement):**")
                 st.markdown(f'<h2 class="result-text">₹ {res["future_exp"] * 12:,}</h2>', unsafe_allow_html=True)
                 
-                st.write("Required Retirement Corpus:")
+                st.write(f"**Required Retirement Corpus:**")
                 st.markdown(f'<h2 class="result-text">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
 
             with r2:
-                st.write("Projected Savings at Retirement:")
-                # ✅ FIXED: Use class instead of inline style
+                st.write(f"**Projected Savings at Retirement:**")
                 st.markdown(f'<h2 class="result-white">₹ {res["total_sav"]:,}</h2>', unsafe_allow_html=True)
                 
-                st.write("Shortfall (കുറവ് വരുന്ന തുക):")
+                st.write(f"**Shortfall (കുറവ് വരുന്ന തുക):**")
                 sh_color = "#22C55E" if res["shortfall"] <= 0 else "#ef4444"
                 st.markdown(f'<h2 style="color: {sh_color};">₹ {res["shortfall"]:,}</h2>', unsafe_allow_html=True)
 
             st.divider()
 
+            # --- ACTION ITEMS ---
             if res["shortfall"] > 0:
                 st.warning("നിങ്ങളുടെ ലക്ഷ്യത്തിലെത്താൻ അധികമായി താഴെ പറയുന്നവയിൽ ഒന്ന് ചെയ്യേണ്ടതുണ്ട്:")
                 st.markdown(f"🔹 **Additional Monthly SIP:** <span class='result-text'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
@@ -163,6 +182,36 @@ if st.button("CALCULATE MY RETIREMENT PLAN"):
             else:
                 st.success("✅ അഭിനന്ദനങ്ങൾ! നിങ്ങളുടെ നിലവിലെ നിക്ഷേപം റിട്ടയർമെന്റിന് ധാരാളമാണ്.")
 
+            # ✅ NEW: YEARLY WITHDRAWAL SCHEDULE ---
+            st.markdown("---")
+            st.markdown(f"### 📅 **വിരമിക്കൽ കാലത്തെ വർഷം തോറും പിൻവലിക്കൽ തുക**")
+            st.markdown(f"**കാലാവധി:** {int(retire_age)} മുതൽ {int(life_exp)} വയസ്സ് വരെ ({res['ret_years']} വർഷം)")
+            
+            # Create DataFrame for better display
+            withdrawal_df = pd.DataFrame(res["annual_withdrawals"])
+            
+            # Display as interactive table
+            st.dataframe(
+                withdrawal_df.style.format({
+                    "Annual_Withdrawal": "₹ {:,}",
+                    "Monthly_Equivalent": "₹ {:,}"
+                }).background_gradient(subset=["Annual_Withdrawal"], cmap="Greens"),
+                use_container_width=True
+            )
+            
+            # Optional: Show as chart
+            st.markdown("#### 📈 ദൃശ്യവൽക്കരണം")
+            chart_data = withdrawal_df[["Age", "Annual_Withdrawal"]].set_index("Age")
+            st.line_chart(chart_data, use_container_width=True)
+            
+            # ✅ NEW: Summary statistics
+            st.markdown("#### 📊 സംക്ഷിപ്ത വിവരങ്ങൾ")
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            col_stats1.metric("ആകെ പിൻവലിക്കൽ വർഷം", f"{res['ret_years']}")
+            col_stats2.metric("ആദ്യവർഷത്തെ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][0]['Annual_Withdrawal']:,}")
+            col_stats3.metric("അവസാന വർഷത്തെ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][-1]['Annual_Withdrawal']:,}")
+            
+            # Random quote
             st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* ഈ കണക്കുകൾ നൽകിയിട്ടുള്ള അനുമാനങ്ങളെ അടിസ്ഥാനമാക്കിയുള്ളതാണ്. മാർക്കറ്റ് റിസ്കുകൾ ബാധകമാണ്.</p>", unsafe_allow_html=True)

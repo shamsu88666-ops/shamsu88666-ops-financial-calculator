@@ -116,6 +116,8 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 # --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Future Wealth</p>", unsafe_allow_html=True)
+# ✅ DEVELOPER NAME ADDED
+st.markdown("<p style='text-align: center; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>", unsafe_allow_html=True)
 
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 user_name = st.text_input("Name of the User", value="Valued User")
@@ -136,14 +138,13 @@ with col2:
     pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
     post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
     
-    # ✅ PROMINENT LEGACY EXPLANATION
+    # ✅ EXACT LEGACY EXPLANATION TEXT PROVIDED
     st.markdown("""
-        <div style='background-color: #1F2937; padding: 12px; border-radius: 8px; 
-                    border-left: 5px solid #22C55E; margin-bottom: 10px;'>
-            <p style='color: #E5E7EB; margin: 0; font-size: 14px;'>
-                <strong>💡 ലെഗസി എന്താണ്?</strong><br>
-                ഇന്നത്തെ വിലയിൽ നിങ്ങൾ ഭാവിയിൽ സംരക്ഷിക്കാൻ ആഗ്രഹിക്കുന്ന തുക. 
-                ഉദാ: ഇന്ന് ₹1 കോടി കൊടുത്താൽ, 6% ഇൻഫ്ലേഷനിൽ 55 വർഷത്തിനു ശേഷം ₹27 കോടി സംരക്ഷിക്കപ്പെടും.
+        <div style='background-color: #1F2937; padding: 15px; border-radius: 8px; 
+                    border-left: 5px solid #22C55E; margin-bottom: 12px;'>
+            <p style='color: #E5E7EB; margin: 0; font-size: 14px; line-height: 1.6;'>
+                <strong>💡 LEGACY എമൗണ്ട് എന്താണ്?</strong><br>
+                നിങ്ങളുടെ കാലശേഷം അനന്തരാവകാശികൾക്ക് മാറ്റിവെക്കുവാൻ ഉദ്ദേശിക്കുന്ന തുക ഇവിടെ നൽകുക. നിങ്ങൾ ഇപ്പോൾ നൽകുന്ന തുക ഇപ്പോൾ ഉള്ള അതേ മൂല്യത്തിൽ നിങ്ങളുടെ അനാഥരാവകാശികൾക്ക് ലഭിക്കും.
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -153,7 +154,7 @@ with col2:
         value=0, 
         min_value=0, 
         step=100000,
-        help="നിങ്ങളുടെ ആശയങ്ങൾ അനുസരിച്ച് ഇന്നത്തെ മൂല്യം ഇവിടെ നൽകുക"
+        help="അന്തരാവകാശികൾക്ക് വേണ്ടി ബാക്കി വയ്ക്കാൻ ആഗ്രഹിക്കുന്ന ഇന്നത്തെ മൂല്യം"
     )
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -238,7 +239,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
         ]
         for i, (l, v) in enumerate(summary):
             worksheet.write(i+11, 3, l, normal_fmt)
-            worksheet.write(i+11, 4, v, currency_fmt if isinstance(v, (int, float)) and i != 3 else normal_fmt if i == 3 else currency_fmt)
+            worksheet.write(i+11, 4, v, currency_fmt)
 
         # WITHDRAWAL SCHEDULE
         worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)

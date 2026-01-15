@@ -30,28 +30,19 @@ all_quotes = [
     "“Start today, for the sake of tomorrow.”"
 ]
 
-# --- CORE LOGIC (V4 - PRO + Legacy + Yearly Schedule) ---
+# --- CORE LOGIC ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount):
-    """
-    Calculate retirement plan with legacy amount and year-wise withdrawal schedule
-    """
     years_to_retire = r_age - c_age
     ret_years = l_exp - r_age
     m_to_retire = years_to_retire * 12
     ret_months = ret_years * 12
 
-    # 1. Future Monthly Expense
     future_monthly_exp_unrounded = c_exp * ((1 + inf_rate/100) ** years_to_retire)
     future_monthly_exp = round(future_monthly_exp_unrounded)
     
-    # Base annual withdrawal (for schedule)
-    base_annual_withdrawal = future_monthly_exp_unrounded * 12
-
-    # 2. Real Rate of Return (Post-Retirement)
     annual_real_rate = ((1 + post_ret_r/100) / (1 + inf_rate/100)) - 1
     monthly_real_rate = (1 + annual_real_rate)**(1/12) - 1
 
-    # 3. Adjusted Corpus Required (Annuity + Legacy)
     if monthly_real_rate != 0:
         corp_req_annuity = future_monthly_exp_unrounded * (1 - (1 + monthly_real_rate) ** (-ret_months)) / monthly_real_rate
         corp_req_legacy = legacy_amount / ((1 + monthly_real_rate) ** ret_months) if legacy_amount > 0 else 0
@@ -59,7 +50,6 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
     else:
         corp_req = future_monthly_exp_unrounded * ret_months + legacy_amount
 
-    # 4. Projected Savings
     pre_r_monthly = (1 + pre_ret_r/100)**(1/12) - 1
     existing_future = e_corp * ((1 + pre_r_monthly) ** m_to_retire)
     
@@ -69,8 +59,6 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         sip_future = c_sav * m_to_retire
         
     total_savings = max(0, round(existing_future + sip_future))
-
-    # 5. Shortfall & Requirements
     shortfall = max(0.0, corp_req - total_savings)
     
     req_sip = 0
@@ -83,7 +71,6 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
             req_sip = shortfall / m_to_retire
             req_lumpsum = shortfall
 
-    # Yearly withdrawal schedule
     annual_withdrawals = []
     for year in range(ret_years):
         age = r_age + year
@@ -129,113 +116,62 @@ with col2:
     pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
     post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
     legacy_amount = st.number_input("Legacy Amount (₹)", value=0, min_value=0, step=100000)
-
 st.markdown('</div>', unsafe_allow_html=True)
 
 if st.button("Calculate"):
-    # Validation
-    if current_age >= retire_age or retire_age >= life_exp:
-        st.error("❌ Please check the age inputs.")
+    res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, inf_rate, current_sip, existing_corp, pre_ret_rate, post_ret_rate, legacy_amount)
+    st.session_state.res = res
+    
+    st.divider()
+    r1, r2 = st.columns(2)
+    with r1:
+        st.metric("Expense at Retirement (Monthly)", f"₹ {res['future_exp']:,}")
+        st.metric("Required Retirement Corpus", f"₹ {res['corp_req']:,}")
+    with r2:
+        st.metric("Projected Savings", f"₹ {res['total_sav']:,}")
+        st.metric("Shortfall", f"₹ {res['shortfall']:,}", delta_color="inverse")
+
+    if res["shortfall"] > 0:
+        st.error("📉 SHORTFALL ANALYSIS")
+        st.markdown(f"To cover the shortfall of **₹ {res['shortfall']:,}**, you need to invest:")
+        st.markdown(f"🔹 **Additional Monthly SIP:** <span style='font-size:1.5em; color:#22C55E;'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
+        st.markdown(f"🔹 **OR One-time Lumpsum Today:** <span style='font-size:1.5em; color:#22C55E;'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
     else:
-        res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, inf_rate, current_sip, existing_corp, pre_ret_rate, post_ret_rate, legacy_amount)
-        st.session_state.res = res
-        
-        st.divider()
-        r1, r2 = st.columns(2)
-        with r1:
-            st.metric("Expense at Retirement (Monthly)", f"₹ {res['future_exp']:,}")
-            st.metric("Required Retirement Corpus", f"₹ {res['corp_req']:,}")
-        with r2:
-            st.metric("Projected Savings", f"₹ {res['total_sav']:,}")
-            sh_color = "normal" if res["shortfall"] <= 0 else "inverse"
-            st.metric("Shortfall", f"₹ {res['shortfall']:,}", delta_color=sh_color)
+        st.success("✅ Your current savings plan is on track!")
 
-        if res["shortfall"] > 0:
-            st.warning(f"🔹 Monthly SIP needed to cover shortfall: ₹ {res['req_sip']:,}")
-        else:
-            st.success("✅ Your current savings plan is on track!")
+    st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
+    st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
-        st.markdown("### 📅 Yearly Withdrawal Schedule")
-        st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
-        st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
-
-st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
-
-# ✅ PROFESSIONAL EXCEL DOWNLOAD WITH DESIGN
+# ✅ PROFESSIONAL EXCEL DOWNLOAD
 if 'res' in st.session_state and st.session_state.res is not None:
     res = st.session_state.res
     buffer = io.BytesIO()
-    
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         workbook = writer.book
         worksheet = workbook.add_worksheet('Retirement Plan')
-        
-        # STYLES
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1, 'align': 'center'})
-        sub_header_fmt = workbook.add_format({'bold': True, 'bg_color': '#F3F4F6', 'border': 1})
+        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1})
         currency_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1})
         percent_fmt = workbook.add_format({'num_format': '0.0"%"', 'border': 1})
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 16, 'font_color': '#16A34A'})
-        disclaimer_fmt = workbook.add_format({'font_size': 9, 'italic': True, 'font_color': '#4B5563', 'text_wrap': True})
-
-        # HEADER SECTION
-        worksheet.write('A1', 'RETIREMENT PLAN REPORT', title_fmt)
-        worksheet.write('A2', f'Generated on: {date.today().strftime("%d %b %Y")}')
+        
+        worksheet.write('A1', 'RETIREMENT PLAN REPORT', workbook.add_format({'bold': True, 'font_size': 16}))
         worksheet.write('A3', f'Planner: SHAMSUDEEN ABDULLA')
 
-        # INPUTS
-        worksheet.write('A5', '1. INPUT PARAMETERS', sub_header_fmt)
-        input_data = [
-            ["Current Age", current_age], ["Retirement Age", retire_age], 
-            ["Life Expectancy", life_exp], ["Current Monthly Expense", current_expense],
-            ["Inflation Rate", inf_rate/100], ["Expected Pre-Retirement Return", pre_ret_rate/100],
-            ["Expected Post-Retirement Return", post_ret_rate/100], ["Legacy Goal", legacy_amount]
-        ]
-        for i, (label, val) in enumerate(input_data):
-            worksheet.write(i+5, 0, label)
-            if "Rate" in label or "Return" in label:
-                worksheet.write(i+5, 1, val, percent_fmt)
-            else:
-                worksheet.write(i+5, 1, val, currency_fmt)
+        # Summary Table
+        summary_labels = ["Required Corpus", "Projected Savings", "Shortfall", "Extra Monthly SIP", "One-time Lumpsum"]
+        summary_vals = [res['corp_req'], res['total_sav'], res['shortfall'], res['req_sip'], res['req_lumpsum']]
+        for i, (l, v) in enumerate(zip(summary_labels, summary_vals)):
+            worksheet.write(i+5, 0, l)
+            worksheet.write(i+5, 1, v, currency_fmt)
 
-        # RESULTS
-        worksheet.write('D5', '2. PLAN SUMMARY', sub_header_fmt)
-        res_data = [
-            ["Monthly Expense at Retirement", res['future_exp']],
-            ["Total Corpus Needed", res['corp_req']],
-            ["Projected Savings", res['total_sav']],
-            ["Shortfall", res['shortfall']],
-            ["Required Extra Monthly SIP", res['req_sip']]
-        ]
-        for i, (label, val) in enumerate(res_data):
-            worksheet.write(i+5, 3, label)
-            worksheet.write(i+5, 4, val, currency_fmt)
+        # Schedule
+        headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount"]
+        for c, h in enumerate(headers): worksheet.write(12, c, h, header_fmt)
+        for r, row in enumerate(res['annual_withdrawals']):
+            worksheet.write(r+13, 0, row["Age"])
+            worksheet.write(r+13, 1, row["Year"])
+            worksheet.write(r+13, 2, row["Annual Withdrawal"], currency_fmt)
+            worksheet.write(r+13, 3, row["Monthly Amount"], currency_fmt)
 
-        # TABLE
-        worksheet.write('A15', '3. YEARLY WITHDRAWAL SCHEDULE', sub_header_fmt)
-        headers = ["Age", "Year", "Annual Withdrawal (₹)", "Monthly Amount (₹)"]
-        for col_num, header in enumerate(headers):
-            worksheet.write(15, col_num, header, header_fmt)
+        worksheet.set_column('A:D', 20)
 
-        for row_num, row_data in enumerate(res['annual_withdrawals']):
-            worksheet.write(row_num + 16, 0, row_data["Age"])
-            worksheet.write(row_num + 16, 1, row_data["Year"])
-            worksheet.write(row_num + 16, 2, row_data["Annual Withdrawal"], currency_fmt)
-            worksheet.write(row_num + 16, 3, row_data["Monthly Amount"], currency_fmt)
-
-        # DISCLAIMER
-        disclaimer_text = ("DISCLAIMER: This report is for educational purposes only. The calculations are based on the assumptions provided. "
-                           "Market returns are subject to volatility and not guaranteed. Please consult a financial advisor.")
-        worksheet.merge_range('A100:E103', disclaimer_text, disclaimer_fmt)
-        
-        worksheet.set_column('A:A', 30)
-        worksheet.set_column('B:B', 20)
-        worksheet.set_column('D:D', 30)
-        worksheet.set_column('E:E', 20)
-
-    st.download_button(
-        label="📥 Download Detailed Excel Report",
-        data=buffer.getvalue(),
-        file_name=f"Retirement_Plan_{date.today()}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    st.download_button(label="📥 Download Excel Report", data=buffer.getvalue(), file_name=f"Retirement_Plan_{date.today()}.xlsx", mime="application/vnd.ms-excel")

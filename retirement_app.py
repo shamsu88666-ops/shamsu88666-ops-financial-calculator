@@ -122,14 +122,23 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
             req_lumpsum = shortfall
 
     annual_withdrawals = []
+    current_balance = total_savings if total_savings > corp_req else corp_req
+    monthly_post_ret_r = (1 + post_ret_r/100)**(1/12) - 1
+    
     for year in range(ret_years):
         age = r_age + year
-        withdrawal = (future_monthly_exp_unrounded * 12) * ((1 + inf_rate/100) ** year)
+        withdrawal_monthly = future_monthly_exp_unrounded * ((1 + inf_rate/100) ** year)
+        
+        # Balance calculation for the year
+        for _ in range(12):
+            current_balance = (current_balance * (1 + monthly_post_ret_r)) - withdrawal_monthly
+        
         annual_withdrawals.append({
             "Age": int(age),
             "Year": year + 1,
-            "Annual Withdrawal": round(withdrawal),
-            "Monthly Amount": round(withdrawal / 12)
+            "Annual Withdrawal": round(withdrawal_monthly * 12),
+            "Monthly Amount": round(withdrawal_monthly),
+            "Remaining Corpus (Legacy)": round(max(0, current_balance))
         })
 
     return {
@@ -191,6 +200,7 @@ if st.button("Calculate"):
     else:
         st.success("✅ Your current savings plan is on track!")
 
+    st.write("### Post-Retirement Yearly Cashflow & Legacy Corpus")
     st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
     st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
@@ -219,7 +229,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
             "The app developer shall not be held responsible for any financial liabilities, losses, or other damages "
             "incurred based on the information provided in this report."
         )
-        worksheet.merge_range('A1:E4', disclaimer_text, disclaimer_fmt)
+        worksheet.merge_range('A1:F4', disclaimer_text, disclaimer_fmt)
 
         # --- SECTION: REPORT INFO ---
         worksheet.write('A6', 'RETIREMENT PLAN REPORT', title_fmt)
@@ -251,8 +261,8 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(i+11, 4, v, currency_fmt)
 
         # --- SECTION: WITHDRAWAL SCHEDULE ---
-        worksheet.write('A23', '3. YEARLY WITHDRAWAL SCHEDULE', header_fmt)
-        table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount"]
+        worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
+        table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus (Legacy)"]
         for c, h in enumerate(table_headers):
             worksheet.write(24, c, h, header_fmt)
         
@@ -261,8 +271,9 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(r+25, 1, row["Year"], normal_fmt)
             worksheet.write(r+25, 2, row["Annual Withdrawal"], currency_fmt)
             worksheet.write(r+25, 3, row["Monthly Amount"], currency_fmt)
+            worksheet.write(r+25, 4, row["Remaining Corpus (Legacy)"], currency_fmt)
 
-        worksheet.set_column('A:E', 22)
+        worksheet.set_column('A:F', 22)
 
     st.download_button(
         label="📥 Download Excel Report", 

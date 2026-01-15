@@ -4,6 +4,7 @@ import random
 import time
 from datetime import date
 import io
+from fpdf import FPDF
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
@@ -91,7 +92,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         
         req_lumpsum = shortfall / ((1 + pre_r_monthly) ** m_to_retire)
 
-    # ✅ Yearly withdrawal schedule
+    # Yearly withdrawal schedule
     annual_withdrawals = []
     base_annual_rounded = round(base_annual_withdrawal)
     
@@ -148,7 +149,6 @@ with col2:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ✅ FIXED: Calculate button - store results in session state
 if st.button("കണക്കുകൂട്ടുക"):
     # Validation
     validation_errors = []
@@ -242,53 +242,62 @@ if st.button("കണക്കുകൂട്ടുക"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* അനുമാനങ്ങളെ അടിസ്ഥാനമാക്കിയുള്ളത്. മാർക്കറ്റ് റിസ്കുകൾ ബാധകം.</p>", unsafe_allow_html=True)
 
-# ✅ FIXED: CSV Download (Excel-ന് പകരം, openpyxl ഇല്ലാത്ത പ്രശ്നം പരിഹരിക്കാൻ)
+# ✅ PDF Download Logic
 if 'res' in st.session_state and st.session_state.res is not None:
-    # Create CSV instead of Excel
-    csv_data = []
+    res = st.session_state.res
     
-    # Summary section
-    csv_data.append(["ഇൻപുട്ട് വിവരങ്ങൾ"])
-    csv_data.append(["പരാമീറ്റർ", "മൂല്യം"])
-    csv_data.append(["നിലവിലെ പ്രായം", current_age])
-    csv_data.append(["വിരമിക്കൽ പ്രായം", retire_age])
-    csv_data.append(["പ്രതീക്ഷിക്കുന്ന ആയുസ്സ്", life_exp])
-    csv_data.append(["പ്രതിമാസ ചെലവ് (₹)", current_expense])
-    csv_data.append(["വിലക്കയറ്റം (%)", inf_rate])
-    csv_data.append(["നിലവിലെ സമ്പാദ്യം (₹)", existing_corp])
-    csv_data.append(["മാസ നിക്ഷേപം - SIP (₹)", current_sip])
-    csv_data.append(["വിരമിക്കൽ വരെയുള്ള returns (%)", pre_ret_rate])
-    csv_data.append(["വിരമിച്ച ശേഷമുള്ള returns (%)", post_ret_rate])
-    csv_data.append(["പിന്തലമുറയ്ക്ക് തുക (₹)", legacy_amount])
-    csv_data.append([])
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="Retirement Plan Summary", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.cell(200, 10, txt=f"Report Date: {date.today()}", ln=True, align='C')
+    pdf.ln(10)
+
+    # Summary Section
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "1. Results Summary", ln=True)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 8, f"Monthly Exp at Retirement: INR {res['future_exp']:,}", ln=True)
+    pdf.cell(0, 8, f"Total Corpus Required: INR {res['corp_req']:,}", ln=True)
+    pdf.cell(0, 8, f"Projected Savings: INR {res['total_sav']:,}", ln=True)
+    pdf.cell(0, 8, f"Shortfall: INR {res['shortfall']:,}", ln=True)
+    pdf.ln(5)
+
+    if res["shortfall"] > 0:
+        pdf.set_text_color(239, 68, 68) # Red
+        pdf.cell(0, 8, f"Additional Monthly SIP Needed: INR {res['req_sip']:,}", ln=True)
+        pdf.cell(0, 8, f"OR Additional Lumpsum Today: INR {res['req_lumpsum']:,}", ln=True)
+        pdf.set_text_color(0, 0, 0) # Back to Black
+
+    pdf.ln(10)
+
+    # Schedule Table
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "2. Annual Withdrawal Schedule", ln=True)
+    pdf.set_font("Arial", 'B', 10)
     
-    csv_data.append(["ഫലങ്ങൾ"])
-    csv_data.append(["കണക്ക്", "തുക (₹)"])
-    csv_data.append(["വിരമിക്കുമ്പോഴത്തെ പ്രതിമാസ ചെലവ്", st.session_state.res['future_exp']])
-    csv_data.append(["വാർഷിക പിൻവലിക്കൽ", st.session_state.res['future_exp'] * 12])
-    csv_data.append(["ആവശ്യമായ റിട്ടയർമെന്റ് കോർപസ്", st.session_state.res['corp_req']])
-    csv_data.append(["കണക്കാക്കപ്പെട്ട സമ്പാദ്യം", st.session_state.res['total_sav']])
-    csv_data.append(["കുറവ്", st.session_state.res['shortfall']])
-    csv_data.append(["അധിക SIP ആവശ്യം", st.session_state.res['req_sip']])
-    csv_data.append(["അധിക lumpsum ആവശ്യം", st.session_state.res['req_lumpsum']])
-    csv_data.append([])
-    
-    # Yearly schedule
-    if 'annual_withdrawals' in st.session_state.res:
-        csv_data.append(["വാർഷിക പിൻവലിക്കൽ ഷെഡ്യൂൾ"])
-        csv_data.append(["പ്രായം", "വർഷം", "വർഷിക പിൻവലിക്കൽ (₹)", "മാസിക തുക (₹)"])
-        for row in st.session_state.res['annual_withdrawals']:
-            csv_data.append([row["പ്രായം"], row["വർഷം"], row["വർഷിക പിൻവലിക്കൽ"], row["മാസിക തുക"]])
-    
-    # Create CSV
-    csv_buffer = io.StringIO()
-    for row in csv_data:
-        csv_buffer.write(",".join([str(cell) for cell in row]) + "\n")
-    csv_data = csv_buffer.getvalue()
+    # Header
+    pdf.cell(30, 8, "Age", 1)
+    pdf.cell(30, 8, "Year", 1)
+    pdf.cell(60, 8, "Annual Withdrawal", 1)
+    pdf.cell(60, 8, "Monthly Eq.", 1)
+    pdf.ln()
+
+    pdf.set_font("Arial", size=10)
+    for row in res['annual_withdrawals']:
+        pdf.cell(30, 8, str(row["പ്രായം"]), 1)
+        pdf.cell(30, 8, str(row["വർഷം"]), 1)
+        pdf.cell(60, 8, f"{row['വർഷിക പിൻവലിക്കൽ']:,}", 1)
+        pdf.cell(60, 8, f"{row['മാസിക തുക']:,}", 1)
+        pdf.ln()
+
+    # Get PDF bytes
+    pdf_output = pdf.output(dest='S')
     
     st.download_button(
-        label="📥 ഫലങ്ങൾ CSV ആയി ഡൗൺലോഡ് ചെയ്യുക",
-        data=csv_data.encode('utf-8'),
-        file_name=f"retirement_plan_{current_age}_{date.today().strftime('%Y%m%d')}.csv",
-        mime="text/csv"
+        label="📥 ഫലങ്ങൾ PDF ആയി ഡൗൺലോഡ് ചെയ്യുക",
+        data=pdf_output,
+        file_name=f"retirement_plan_{date.today().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf"
     )

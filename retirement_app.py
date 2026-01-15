@@ -96,9 +96,10 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 
 # --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9CA3AF;'>Developed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Future Wealth</p>", unsafe_allow_html=True)
 
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
+user_name = st.text_input("Name of the User", value="Valued User")
 col1, col2 = st.columns(2)
 
 with col1:
@@ -121,6 +122,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 if st.button("Calculate"):
     res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, inf_rate, current_sip, existing_corp, pre_ret_rate, post_ret_rate, legacy_amount)
     st.session_state.res = res
+    st.session_state.user_name = user_name
     
     st.divider()
     r1, r2 = st.columns(2)
@@ -134,44 +136,87 @@ if st.button("Calculate"):
     if res["shortfall"] > 0:
         st.error("📉 SHORTFALL ANALYSIS")
         st.markdown(f"To cover the shortfall of **₹ {res['shortfall']:,}**, you need to invest:")
-        st.markdown(f"🔹 **Additional Monthly SIP:** <span style='font-size:1.5em; color:#22C55E;'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
-        st.markdown(f"🔹 **OR One-time Lumpsum Today:** <span style='font-size:1.5em; color:#22C55E;'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
+        st.markdown(f"🔹 **Additional Monthly SIP:** <span style='font-size:1.2em; color:#22C55E;'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
+        st.markdown(f"🔹 **OR One-time Lumpsum Today:** <span style='font-size:1.2em; color:#22C55E;'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
     else:
         st.success("✅ Your current savings plan is on track!")
 
     st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
     st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
-# ✅ PROFESSIONAL EXCEL DOWNLOAD
+st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
+
+# ✅ PROFESSIONAL EXCEL DOWNLOAD WITH DISCLAIMER AT TOP
 if 'res' in st.session_state and st.session_state.res is not None:
     res = st.session_state.res
+    u_name = st.session_state.user_name
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         workbook = writer.book
         worksheet = workbook.add_worksheet('Retirement Plan')
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1})
-        currency_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1})
-        percent_fmt = workbook.add_format({'num_format': '0.0"%"', 'border': 1})
         
-        worksheet.write('A1', 'RETIREMENT PLAN REPORT', workbook.add_format({'bold': True, 'font_size': 16}))
-        worksheet.write('A3', f'Planner: SHAMSUDEEN ABDULLA')
+        # Styles
+        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1})
+        title_fmt = workbook.add_format({'bold': True, 'font_size': 14})
+        currency_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1})
+        disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'valign': 'top'})
+        normal_fmt = workbook.add_format({'border': 1})
 
-        # Summary Table
-        summary_labels = ["Required Corpus", "Projected Savings", "Shortfall", "Extra Monthly SIP", "One-time Lumpsum"]
-        summary_vals = [res['corp_req'], res['total_sav'], res['shortfall'], res['req_sip'], res['req_lumpsum']]
-        for i, (l, v) in enumerate(zip(summary_labels, summary_vals)):
-            worksheet.write(i+5, 0, l)
-            worksheet.write(i+5, 1, v, currency_fmt)
+        # --- SECTION: DISCLAIMER (AT TOP) ---
+        disclaimer_text = (
+            "DISCLAIMER: This report is generated based on basic mathematics and the inputs provided by you. "
+            "Practical results may vary significantly. Your financial planning should not be based solely on this report. "
+            "The app developer shall not be held responsible for any financial liabilities, losses, or other damages "
+            "incurred based on the information provided in this report."
+        )
+        worksheet.merge_range('A1:E4', disclaimer_text, disclaimer_fmt)
 
-        # Schedule
-        headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount"]
-        for c, h in enumerate(headers): worksheet.write(12, c, h, header_fmt)
+        # --- SECTION: REPORT INFO ---
+        worksheet.write('A6', 'RETIREMENT PLAN REPORT', title_fmt)
+        worksheet.write('A7', f'User Name: {u_name}')
+        worksheet.write('A8', f'Generated on: {date.today()}')
+
+        # --- SECTION: INPUTS ---
+        worksheet.write('A10', '1. INPUT PARAMETERS', header_fmt)
+        inputs = [
+            ["Current Age", current_age], ["Retirement Age", retire_age], ["Life Expectancy", life_exp],
+            ["Current Monthly Expense", current_expense], ["Inflation Rate (%)", inf_rate],
+            ["Existing Savings", existing_corp], ["Current Monthly SIP", current_sip],
+            ["Pre-retirement Return (%)", pre_ret_rate], ["Post-retirement Return (%)", post_ret_rate],
+            ["Legacy Amount", legacy_amount]
+        ]
+        for i, (l, v) in enumerate(inputs):
+            worksheet.write(i+11, 0, l, normal_fmt)
+            worksheet.write(i+11, 1, v, normal_fmt)
+
+        # --- SECTION: RESULTS ---
+        worksheet.write('D10', '2. RESULTS SUMMARY', header_fmt)
+        summary = [
+            ["Expense at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
+            ["Projected Savings", res['total_sav']], ["Shortfall", res['shortfall']],
+            ["Extra Monthly SIP Needed", res['req_sip']], ["One-time Lumpsum Needed", res['req_lumpsum']]
+        ]
+        for i, (l, v) in enumerate(summary):
+            worksheet.write(i+11, 3, l, normal_fmt)
+            worksheet.write(i+11, 4, v, currency_fmt)
+
+        # --- SECTION: WITHDRAWAL SCHEDULE ---
+        worksheet.write('A23', '3. YEARLY WITHDRAWAL SCHEDULE', header_fmt)
+        table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount"]
+        for c, h in enumerate(table_headers):
+            worksheet.write(24, c, h, header_fmt)
+        
         for r, row in enumerate(res['annual_withdrawals']):
-            worksheet.write(r+13, 0, row["Age"])
-            worksheet.write(r+13, 1, row["Year"])
-            worksheet.write(r+13, 2, row["Annual Withdrawal"], currency_fmt)
-            worksheet.write(r+13, 3, row["Monthly Amount"], currency_fmt)
+            worksheet.write(r+25, 0, row["Age"], normal_fmt)
+            worksheet.write(r+25, 1, row["Year"], normal_fmt)
+            worksheet.write(r+25, 2, row["Annual Withdrawal"], currency_fmt)
+            worksheet.write(r+25, 3, row["Monthly Amount"], currency_fmt)
 
-        worksheet.set_column('A:D', 20)
+        worksheet.set_column('A:E', 22)
 
-    st.download_button(label="📥 Download Excel Report", data=buffer.getvalue(), file_name=f"Retirement_Plan_{date.today()}.xlsx", mime="application/vnd.ms-excel")
+    st.download_button(
+        label="📥 Download Excel Report", 
+        data=buffer.getvalue(), 
+        file_name=f"Retirement_Plan_{u_name}_{date.today()}.xlsx", 
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

@@ -26,11 +26,11 @@ st.markdown("""
 
 # --- MOTIVATION QUOTES ---
 all_quotes = [
-    "“നിക്ഷേപം ഒരു ഒറ്റ തീരുമാനം അല്ല, ജീവിതകാല ശീലമാണ്.”",
-    "“സമ്പത്ത് പെട്ടെന്ന് ഉണ്ടാകുന്നില്ല; സ്ഥിരതയോടെ വളരുന്നു.”",
-    "“SIP തുടങ്ങുന്ന ദിവസം നിങ്ങളുടെ ഭാവി ആരംഭിക്കുന്നു”",
-    "“സമ്പത്ത് പണിയാൻ SIP, ജീവിക്കാൻ SWP”",
-    "“ഇന്ന് തുടങ്ങൂ, നാളേയ്ക്ക് വേണ്ടി.”"
+    "“Investment is not a one-time decision, it is a lifetime habit.”",
+    "“Wealth is not created overnight; it grows with consistency.”",
+    "“The day you start a SIP, your future begins.”",
+    "“SIP to build wealth, SWP to live life.”",
+    "“Start today, for the sake of tomorrow.”"
 ]
 
 # --- CORE LOGIC (V4 - PRO + Legacy + Yearly Schedule) ---
@@ -104,10 +104,10 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         monthly_eq = withdrawal / 12
         
         annual_withdrawals.append({
-            "പ്രായം": int(age),
-            "വർഷം": year + 1,
-            "വർഷിക പിൻവലിക്കൽ": round(withdrawal),
-            "മാസിക തുക": round(monthly_eq)
+            "Age": int(age),
+            "Year": year + 1,
+            "Annual Withdrawal": round(withdrawal),
+            "Monthly Amount": round(monthly_eq)
         })
 
     return {
@@ -124,51 +124,51 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 
 # --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9CA3AF;'>Developed by SHAMSUDEEN ABDULLA</p>", unsafe_allow_html=True)
 
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 👤 വ്യക്തിഗത വിവരങ്ങൾ")
-    current_age = st.number_input("നിലവിലെ പ്രായം", value=30, min_value=0, max_value=100, step=1)
-    retire_age = st.number_input("വിരമിക്കൽ പ്രായം", value=60, min_value=current_age+1, max_value=110, step=1)
-    life_exp = st.number_input("പ്രതീക്ഷിക്കുന്ന ആയുസ്സ്", value=85, min_value=retire_age+1, max_value=120, step=1)
-    current_expense = st.number_input("പ്രതിമാസ ചെലവ് (₹)", value=30000, min_value=1, step=500)
+    st.markdown("### 👤 Personal Information")
+    current_age = st.number_input("Current Age", value=30, min_value=0, max_value=100, step=1)
+    retire_age = st.number_input("Retirement Age", value=60, min_value=current_age+1, max_value=110, step=1)
+    life_exp = st.number_input("Expected Life Expectancy", value=85, min_value=retire_age+1, max_value=120, step=1)
+    current_expense = st.number_input("Monthly Expense (₹)", value=30000, min_value=1, step=500)
 
 with col2:
-    st.markdown("### 💰 നിക്ഷേപ വിവരങ്ങൾ")
-    inf_rate = st.number_input("വിലക്കയറ്റം (%)", value=6.0, step=0.1, format="%.1f")
-    existing_corp = st.number_input("നിലവിലെ സമ്പാദ്യം (₹)", value=0, min_value=0, step=5000)
-    current_sip = st.number_input("മാസ നിക്ഷേപം - SIP (₹)", value=0, min_value=0, step=100)
-    pre_ret_rate = st.number_input("വിരമിക്കൽ വരെയുള്ള returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
-    post_ret_rate = st.number_input("വിരമിച്ച ശേഷമുള്ള returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
+    st.markdown("### 💰 Investment Details")
+    inf_rate = st.number_input("Inflation Rate (%)", value=6.0, step=0.1, format="%.1f")
+    existing_corp = st.number_input("Existing Savings (₹)", value=0, min_value=0, step=5000)
+    current_sip = st.number_input("Monthly SIP (₹)", value=0, min_value=0, step=100)
+    pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
+    post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
     
     # Legacy input
-    st.markdown("### 🏦 പിന്തലമുറയ്ക്ക്")
-    legacy_amount = st.number_input("ബാക്കി തുക (₹)", value=0, min_value=0, step=100000, 
-                                    help="ആയുസ്സ് അവസാനത്തോടെ പിന്തലമുറയ്ക്ക് നൽകാൻ ആഗ്രഹിക്കുന്ന തുക")
+    st.markdown("### 🏦 Legacy Planning")
+    legacy_amount = st.number_input("Legacy Amount (₹)", value=0, min_value=0, step=100000, 
+                                    help="The amount you wish to leave for the next generation")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-if st.button("കണക്കുകൂട്ടുക"):
+if st.button("Calculate"):
     # Validation
     validation_errors = []
     if current_age >= retire_age:
-        validation_errors.append("നിലവിലെ പ്രായം വിരമിക്കൽ പ്രായത്തിന് താഴെയായിരിക്കണം")
+        validation_errors.append("Current age must be less than retirement age")
     if retire_age >= life_exp:
-        validation_errors.append("വിരമിക്കൽ പ്രായം പ്രതീക്ഷിക്കുന്ന ആയുസ്സിന് താഴെയായിരിക്കണം")
+        validation_errors.append("Retirement age must be less than life expectancy")
     if pre_ret_rate <= 0 or post_ret_rate <= 0:
-        validation_errors.append("റിട്ടേൺ 0%-ൽ കൂടുതലായിരിക്കണം")
+        validation_errors.append("Returns must be greater than 0%")
     if current_expense <= 0:
-        validation_errors.append("ചെലവ് 0-ൽ കൂടുതലായിരിക്കണം")
+        validation_errors.append("Expense must be greater than 0")
     
     if validation_errors:
         for error in validation_errors:
             st.error(f"❌ {error}")
         st.session_state.res = None
     else:
-        with st.spinner('കണക്ക് പ്രോസസ്സ് ചെയ്യുന്നു...'):
+        with st.spinner('Calculating Plan...'):
             time.sleep(1)
             res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, 
                                             inf_rate, current_sip, existing_corp, 
@@ -181,37 +181,37 @@ if st.button("കണക്കുകൂട്ടുക"):
             # Results display
             r1, r2 = st.columns(2)
             with r1:
-                st.write(f"വിരമിക്കുമ്പോഴത്തെ പ്രതിമാസ ചെലവ്:")
+                st.write(f"Monthly Expense at Retirement:")
                 st.markdown(f'<h2 class="result-text">₹ {res["future_exp"]:,}</h2>', unsafe_allow_html=True)
                 
-                st.write(f"ആവശ്യമായ റിട്ടയർമെന്റ് കോർപസ്:")
+                st.write(f"Required Retirement Corpus:")
                 st.markdown(f'<h2 class="result-text">₹ {res["corp_req"]:,}</h2>', unsafe_allow_html=True)
 
             with r2:
-                st.write(f"കണക്കാക്കപ്പെട്ട സമ്പാദ്യം:")
+                st.write(f"Projected Savings:")
                 st.markdown(f'<h2 style="color: white;">₹ {res["total_sav"]:,}</h2>', unsafe_allow_html=True)
                 
-                st.write(f"കുറവ്:")
+                st.write(f"Shortfall:")
                 sh_color = "#22C55E" if res["shortfall"] <= 0 else "#ef4444"
                 st.markdown(f'<h2 style="color: {sh_color};">₹ {res["shortfall"]:,}</h2>', unsafe_allow_html=True)
                 
                 if res["legacy_amount"] > 0:
-                    st.write(f"പിന്തലമുറയ്ക്ക്:")
+                    st.write(f"Legacy for Next Gen:")
                     st.markdown(f'<h2 class="result-text">₹ {res["legacy_amount"]:,}</h2>', unsafe_allow_html=True)
 
             st.divider()
 
             if res["shortfall"] > 0:
-                st.warning("അധിക നിക്ഷേപം ആവശ്യമാണ്:")
-                st.markdown(f"🔹 **മാസ നിക്ഷേപം:** <span class='result-text'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
-                st.markdown(f"🔹 **അല്ലെങ്കിൽ lumpsum ഇന്ന്:** <span class='result-text'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
+                st.warning("Additional Investment Required:")
+                st.markdown(f"🔹 **Monthly SIP:** <span class='result-text'>₹ {res['req_sip']:,}</span>", unsafe_allow_html=True)
+                st.markdown(f"🔹 **OR Lumpsum Today:** <span class='result-text'>₹ {res['req_lumpsum']:,}</span>", unsafe_allow_html=True)
             else:
-                st.success("✅ ലക്ഷ്യം പൂർത്തിയാകും!")
+                st.success("✅ Goal will be achieved!")
 
             # Yearly Schedule
             st.markdown("---")
-            st.markdown(f"### 📅 ഓരോ വർഷവും പിൻവലിക്കേണ്ട തുക")
-            st.markdown(f"**കാലം:** പ്രായം {int(retire_age)} മുതൽ {int(life_exp)} വരെ")
+            st.markdown(f"### 📅 Yearly Withdrawal Schedule")
+            st.markdown(f"**Period:** From Age {int(retire_age)} to {int(life_exp)}")
             
             withdrawal_df = pd.DataFrame(res["annual_withdrawals"])
             
@@ -219,30 +219,30 @@ if st.button("കണക്കുകൂട്ടുക"):
                 withdrawal_df,
                 use_container_width=True,
                 column_config={
-                    "പ്രായം": st.column_config.NumberColumn("പ്രായം", format="%d"),
-                    "വർഷം": st.column_config.NumberColumn("വർഷം", format="%d"),
-                    "വർഷിക പിൻവലിക്കൽ": st.column_config.NumberColumn("വർഷിക പിൻവലിക്കൽ", format="₹ %,d"),
-                    "മാസിക തുക": st.column_config.NumberColumn("മാസിക തുക", format="₹ %,d")
+                    "Age": st.column_config.NumberColumn("Age", format="%d"),
+                    "Year": st.column_config.NumberColumn("Year", format="%d"),
+                    "Annual Withdrawal": st.column_config.NumberColumn("Annual Withdrawal", format="₹ %,d"),
+                    "Monthly Amount": st.column_config.NumberColumn("Monthly Amount", format="₹ %,d")
                 },
                 hide_index=True
             )
             
-            st.markdown("#### 📈 വർഷം തോറുള്ള മാറ്റം")
+            st.markdown("#### 📈 Year-on-Year Trend")
             st.line_chart(
-                withdrawal_df.set_index("പ്രായം")["വർഷിക പിൻവലിക്കൽ"],
+                withdrawal_df.set_index("Age")["Annual Withdrawal"],
                 color="#22C55E",
                 use_container_width=True
             )
             
-            st.markdown("#### 📊 സംക്ഷിപ്തം")
+            st.markdown("#### 📊 Summary Statistics")
             col_stats1, col_stats2, col_stats3 = st.columns(3)
-            col_stats1.metric("മൊത്തം വർഷം", f"{res['ret_years']}")
-            col_stats2.metric("ആദ്യവർഷ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][0]['വർഷിക പിൻവലിക്കൽ']:,}")
-            col_stats3.metric("അവസാനവർഷ പിൻവലിക്കൽ", f"₹ {res['annual_withdrawals'][-1]['വർഷിക പിൻവലിക്കൽ']:,}")
+            col_stats1.metric("Total Years", f"{res['ret_years']}")
+            col_stats2.metric("First Year Withdrawal", f"₹ {res['annual_withdrawals'][0]['Annual Withdrawal']:,}")
+            col_stats3.metric("Final Year Withdrawal", f"₹ {res['annual_withdrawals'][-1]['Annual Withdrawal']:,}")
             
             st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* അനുമാനങ്ങളെ അടിസ്ഥാനമാക്കിയുള്ളത്. മാർക്കറ്റ് റിസ്കുകൾ ബാധകം.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
 
 # ✅ FIXED: CSV Download with BOM for Excel compatibility
 if 'res' in st.session_state and st.session_state.res is not None:
@@ -253,42 +253,42 @@ if 'res' in st.session_state and st.session_state.res is not None:
     output.write('\ufeff')
     
     # Summary section
-    writer.writerow(["ഇൻപുട്ട് വിവരങ്ങൾ"])
-    writer.writerow(["പരാമീറ്റർ", "മൂല്യം"])
-    writer.writerow(["നിലവിലെ പ്രായം", current_age])
-    writer.writerow(["വിരമിക്കൽ പ്രായം", retire_age])
-    writer.writerow(["പ്രതീക്ഷിക്കുന്ന ആയുസ്സ്", life_exp])
-    writer.writerow(["പ്രതിമാസ ചെലവ് (₹)", current_expense])
-    writer.writerow(["വിലക്കയറ്റം (%)", inf_rate])
-    writer.writerow(["നിലവിലെ സമ്പാദ്യം (₹)", existing_corp])
-    writer.writerow(["മാസ നിക്ഷേപം - SIP (₹)", current_sip])
-    writer.writerow(["വിരമിക്കൽ വരെയുള്ള returns (%)", pre_ret_rate])
-    writer.writerow(["വിരമിച്ച ശേഷമുള്ള returns (%)", post_ret_rate])
-    writer.writerow(["പിന്തലമുറയ്ക്ക് തുക (₹)", legacy_amount])
+    writer.writerow(["Input Information"])
+    writer.writerow(["Parameter", "Value"])
+    writer.writerow(["Current Age", current_age])
+    writer.writerow(["Retirement Age", retire_age])
+    writer.writerow(["Life Expectancy", life_exp])
+    writer.writerow(["Monthly Expense (₹)", current_expense])
+    writer.writerow(["Inflation Rate (%)", inf_rate])
+    writer.writerow(["Existing Savings (₹)", existing_corp])
+    writer.writerow(["Monthly SIP (₹)", current_sip])
+    writer.writerow(["Pre-retirement Returns (%)", pre_ret_rate])
+    writer.writerow(["Post-retirement Returns (%)", post_ret_rate])
+    writer.writerow(["Legacy Amount (₹)", legacy_amount])
     writer.writerow([])
     
-    writer.writerow(["ഫലങ്ങൾ"])
-    writer.writerow(["കണക്ക്", "തുക (₹)"])
-    writer.writerow(["വിരമിക്കുമ്പോഴത്തെ പ്രതിമാസ ചെലവ്", st.session_state.res['future_exp']])
-    writer.writerow(["വാർഷിക പിൻവലിക്കൽ", st.session_state.res['future_exp'] * 12])
-    writer.writerow(["ആവശ്യമായ റിട്ടയർമെന്റ് കോർപസ്", st.session_state.res['corp_req']])
-    writer.writerow(["കണക്കാക്കപ്പെട്ട സമ്പാദ്യം", st.session_state.res['total_sav']])
-    writer.writerow(["കുറവ്", st.session_state.res['shortfall']])
-    writer.writerow(["അധിക SIP ആവശ്യം", st.session_state.res['req_sip']])
-    writer.writerow(["അധിക lumpsum ആവശ്യം", st.session_state.res['req_lumpsum']])
+    writer.writerow(["Results"])
+    writer.writerow(["Metric", "Amount (₹)"])
+    writer.writerow(["Monthly Expense at Retirement", st.session_state.res['future_exp']])
+    writer.writerow(["Annual Withdrawal", st.session_state.res['future_exp'] * 12])
+    writer.writerow(["Required Retirement Corpus", st.session_state.res['corp_req']])
+    writer.writerow(["Projected Savings", st.session_state.res['total_sav']])
+    writer.writerow(["Shortfall", st.session_state.res['shortfall']])
+    writer.writerow(["Additional SIP Required", st.session_state.res['req_sip']])
+    writer.writerow(["Additional Lumpsum Required", st.session_state.res['req_lumpsum']])
     writer.writerow([])
     
     # Yearly schedule
     if 'annual_withdrawals' in st.session_state.res:
-        writer.writerow(["വാർഷിക പിൻവലിക്കൽ ഷെഡ്യൂൾ"])
-        writer.writerow(["പ്രായം", "വർഷം", "വർഷിക പിൻവലിക്കൽ (₹)", "മാസിക തുക (₹)"])
+        writer.writerow(["Yearly Withdrawal Schedule"])
+        writer.writerow(["Age", "Year", "Annual Withdrawal (₹)", "Monthly Amount (₹)"])
         for row in st.session_state.res['annual_withdrawals']:
-            writer.writerow([row["പ്രായം"], row["വർഷം"], row["വർഷിക പിൻവലിക്കൽ"], row["മാസിക തുക"]])
+            writer.writerow([row["Age"], row["Year"], row["Annual Withdrawal"], row["Monthly Amount"]])
     
     csv_data = output.getvalue()
     
     st.download_button(
-        label="📥 ഫലങ്ങൾ CSV ആയി ഡൗൺലോഡ് ചെയ്യുക",
+        label="📥 Download Results as CSV",
         data=csv_data.encode('utf-8-sig'),
         file_name=f"retirement_plan_{current_age}_{date.today().strftime('%Y%m%d')}.csv",
         mime="text/csv; charset=utf-8"

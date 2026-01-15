@@ -4,6 +4,7 @@ import random
 import time
 from datetime import date
 import io
+import numpy as np
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
@@ -39,82 +40,95 @@ all_quotes = [
     "“Start today, for the sake of tomorrow.”"
 ]
 
-# --- CORE LOGIC (CORRECTED) ---
+# --- CORE LOGIC (100% MONTHLY BASIS) ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount_real):
-    years_to_retire = r_age - c_age
-    ret_years = l_exp - r_age
-    m_to_retire = years_to_retire * 12
-    ret_months = ret_years * 12
+    # Time periods in MONTHS
+    months_to_retire = (r_age - c_age) * 12
+    retirement_months = (l_exp - r_age) * 12
+    total_months = (l_exp - c_age) * 12
     
-    # FIX: Convert real legacy to nominal value at life expectancy
-    total_years = l_exp - c_age
-    legacy_amount_nominal = legacy_amount_real * ((1 + inf_rate/100) ** total_years)
+    # Monthly rates
+    monthly_inf = (1 + inf_rate/100) ** (1/12) - 1
+    monthly_pre_ret = (1 + pre_ret_r/100) ** (1/12) - 1
+    monthly_post_ret = (1 + post_ret_r/100) ** (1/12) - 1
     
-    future_monthly_exp_unrounded = c_exp * ((1 + inf_rate/100) ** years_to_retire)
-    future_monthly_exp = round(future_monthly_exp_unrounded)
+    # Legacy: Real value → Nominal value at death
+    legacy_nominal = legacy_amount_real * (1 + monthly_inf) ** total_months
     
-    annual_real_rate = ((1 + post_ret_r/100) / (1 + inf_rate/100)) - 1
-    monthly_real_rate = (1 + annual_real_rate)**(1/12) - 1
-
-    if monthly_real_rate != 0:
-        corp_req_annuity = future_monthly_exp_unrounded * (1 - (1 + monthly_real_rate) ** (-ret_months)) / monthly_real_rate
-        corp_req_legacy = legacy_amount_nominal / ((1 + monthly_real_rate) ** ret_months) if legacy_amount_nominal > 0 else 0
-        corp_req = corp_req_annuity + corp_req_legacy
+    # Future expense at retirement (monthly)
+    expense_at_retirement = c_exp * (1 + monthly_inf) ** months_to_retire
+    
+    # CORRECT: PV of growing annuity (monthly basis)
+    if monthly_post_ret != monthly_inf:
+        # Using formula for growing annuity
+        pv_expenses = expense_at_retirement * (
+            1 - ((1 + monthly_inf) / (1 + monthly_post_ret)) ** retirement_months
+        ) / (monthly_post_ret - monthly_inf)
     else:
-        corp_req = future_monthly_exp_unrounded * ret_months + legacy_amount_nominal
-
-    pre_r_monthly = (1 + pre_ret_r/100)**(1/12) - 1
-    existing_future = e_corp * ((1 + pre_r_monthly) ** m_to_retire)
+        pv_expenses = expense_at_retirement * retirement_months
     
-    if pre_r_monthly > 0:
-        sip_future = c_sav * (((1 + pre_r_monthly) ** m_to_retire - 1) / pre_r_monthly) * (1 + pre_r_monthly)
+    # PV of legacy
+    pv_legacy = legacy_nominal / (1 + monthly_post_ret) ** retirement_months if legacy_nominal > 0 else 0
+    
+    # Total required corpus
+    corp_req = pv_expenses + pv_legacy
+    
+    # Project savings
+    future_existing = e_corp * (1 + monthly_pre_ret) ** months_to_retire
+    
+    if monthly_pre_ret > 0:
+        future_sip = c_sav * (((1 + monthly_pre_ret) ** months_to_retire - 1) / monthly_pre_ret) * (1 + monthly_pre_ret)
     else:
-        sip_future = c_sav * m_to_retire
+        future_sip = c_sav * months_to_retire
         
-    total_savings = max(0, round(existing_future + sip_future))
-    shortfall = max(0.0, corp_req - total_savings)
+    total_savings = future_existing + future_sip
+    shortfall = max(0, corp_req - total_savings)
     
+    # Calculate required SIP/Lumpsum
     req_sip = 0
     req_lumpsum = 0
-    if shortfall > 0 and m_to_retire > 0:
-        if pre_r_monthly > 0:
-            req_sip = (shortfall * pre_r_monthly) / (((1 + pre_r_monthly) ** m_to_retire - 1) * (1 + pre_r_monthly))
-            req_lumpsum = shortfall / ((1 + pre_r_monthly) ** m_to_retire)
+    if shortfall > 0 and months_to_retire > 0:
+        if monthly_pre_ret > 0:
+            req_sip = (shortfall * monthly_pre_ret) / (((1 + monthly_pre_ret) ** months_to_retire - 1) * (1 + monthly_pre_ret))
+            req_lumpsum = shortfall / ((1 + monthly_pre_ret) ** months_to_retire)
         else:
-            req_sip = shortfall / m_to_retire
+            req_sip = shortfall / months_to_retire
             req_lumpsum = shortfall
-
-    # FIX: Start with corp_req always
+    
+    # CORRECT: Monthly withdrawal simulation
     annual_withdrawals = []
     current_balance = corp_req
-    monthly_post_ret_r = (1 + post_ret_r/100)**(1/12) - 1
     
-    for year in range(ret_years):
-        age = r_age + year
-        withdrawal_monthly = future_monthly_exp_unrounded * ((1 + inf_rate/100) ** year)
+    for year in range(retirement_months // 12):
+        year_start_balance = current_balance
         
-        for _ in range(12):
-            current_balance = (current_balance * (1 + monthly_post_ret_r)) - withdrawal_monthly
+        # Monthly expense for THIS year
+        monthly_expense_this_year = expense_at_retirement * (1 + monthly_inf) ** (year * 12)
         
+        # Deduct 12 months
+        for month in range(12):
+            # Apply return, then deduct expense
+            current_balance = (current_balance * (1 + monthly_post_ret)) - monthly_expense_this_year
+        
+        # Store annual data
         annual_withdrawals.append({
-            "Age": int(age),
+            "Age": r_age + year,
             "Year": year + 1,
-            "Annual Withdrawal": round(withdrawal_monthly * 12),
-            "Monthly Amount": round(withdrawal_monthly),
-            "Remaining Corpus (Legacy)": round(max(0, current_balance))
+            "Annual Withdrawal": round(monthly_expense_this_year * 12),
+            "Monthly Amount": round(monthly_expense_this_year),
+            "Remaining Corpus": round(current_balance)
         })
-
+    
     return {
-        "future_exp": future_monthly_exp,
+        "future_exp": round(expense_at_retirement),
         "corp_req": round(corp_req),
-        "total_sav": total_savings,
+        "total_sav": round(total_savings),
         "shortfall": round(shortfall),
         "req_sip": round(req_sip),
         "req_lumpsum": round(req_lumpsum),
-        "legacy_amount_real": round(legacy_amount_real),
-        "legacy_amount_nominal": round(legacy_amount_nominal),
-        "annual_withdrawals": annual_withdrawals,
-        "ret_years": ret_years
+        "legacy_real": round(legacy_amount_real),
+        "legacy_nominal": round(legacy_nominal),
+        "annual_withdrawals": annual_withdrawals
     }
 
 # --- MAIN APP ---
@@ -139,8 +153,7 @@ with col2:
     current_sip = st.number_input("Current Monthly SIP (₹)", value=0, min_value=0, step=100)
     pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
     post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
-    # FIX: Updated label to clarify it's real value
-    legacy_amount = st.number_input("Legacy Amount - Today's Real Value (₹)", value=0, min_value=0, step=100000)
+    legacy_amount = st.number_input("Legacy Amount - Today's Real Value (₹)", value=10000000, min_value=0, step=100000)
 st.markdown('</div>', unsafe_allow_html=True)
 
 if st.button("Calculate"):
@@ -153,13 +166,11 @@ if st.button("Calculate"):
     with r1:
         st.metric("Expense at Retirement (Monthly)", f"₹ {res['future_exp']:,}")
         st.metric("Required Retirement Corpus", f"₹ {res['corp_req']:,}")
-        # NEW: Show both legacy values
-        st.metric("Legacy (Today's Real Value)", f"₹ {res['legacy_amount_real']:,}")
+        st.metric("Legacy (Today's Real Value)", f"₹ {res['legacy_real']:,}")
     with r2:
         st.metric("Projected Savings", f"₹ {res['total_sav']:,}")
         st.metric("Shortfall", f"₹ {res['shortfall']:,}", delta_color="inverse")
-        # NEW: Show nominal legacy at life expectancy
-        st.metric(f"Legacy Nominal at Age {life_exp}", f"₹ {res['legacy_amount_nominal']:,}")
+        st.metric(f"Legacy Nominal at Age {life_exp}", f"₹ {res['legacy_nominal']:,}")
 
     if res["shortfall"] > 0:
         st.error("📉 SHORTFALL ANALYSIS")
@@ -169,7 +180,7 @@ if st.button("Calculate"):
     else:
         st.success("✅ Your current savings plan is on track!")
 
-    st.write("### Post-Retirement Yearly Cashflow & Legacy Corpus")
+    st.write("### Post-Retirement Yearly Cashflow & Remaining Corpus")
     st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
     st.markdown(f'<span class="quote-text">{random.choice(all_quotes)}</span>', unsafe_allow_html=True)
 
@@ -221,25 +232,25 @@ if 'res' in st.session_state and st.session_state.res is not None:
             ["Expense at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
             ["Projected Savings", res['total_sav']], ["Shortfall", res['shortfall']],
             ["Extra Monthly SIP Needed", res['req_sip']], ["One-time Lumpsum Needed", res['req_lumpsum']],
-            ["Legacy (Today's Real Value)", res['legacy_amount_real']],
-            ["Legacy Nominal at Life Expectancy", res['legacy_amount_nominal']]
+            ["Legacy (Today's Real Value)", res['legacy_real']],
+            ["Legacy Nominal at Life Expectancy", res['legacy_nominal']]
         ]
         for i, (l, v) in enumerate(summary):
             worksheet.write(i+11, 3, l, normal_fmt)
-            worksheet.write(i+11, 4, v, currency_fmt if 'Legacy' not in l and 'Corpus' not in l else currency_fmt)
+            worksheet.write(i+11, 4, v, currency_fmt if isinstance(v, (int, float)) and 'Legacy' not in l else normal_fmt if 'Legacy' in l and i < 6 else currency_fmt)
 
         # WITHDRAWAL SCHEDULE
-        worksheet.write('A25', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
-        table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus (Legacy)"]
+        worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
+        table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
         for c, h in enumerate(table_headers):
-            worksheet.write(26, c, h, header_fmt)
+            worksheet.write(24, c, h, header_fmt)
         
         for r, row in enumerate(res['annual_withdrawals']):
-            worksheet.write(r+27, 0, row["Age"], normal_fmt)
-            worksheet.write(r+27, 1, row["Year"], normal_fmt)
-            worksheet.write(r+27, 2, row["Annual Withdrawal"], currency_fmt)
-            worksheet.write(r+27, 3, row["Monthly Amount"], currency_fmt)
-            worksheet.write(r+27, 4, row["Remaining Corpus (Legacy)"], currency_fmt)
+            worksheet.write(r+25, 0, row["Age"], normal_fmt)
+            worksheet.write(r+25, 1, row["Year"], normal_fmt)
+            worksheet.write(r+25, 2, row["Annual Withdrawal"], currency_fmt)
+            worksheet.write(r+25, 3, row["Monthly Amount"], currency_fmt)
+            worksheet.write(r+25, 4, row["Remaining Corpus"], currency_fmt)
 
         worksheet.set_column('A:F', 22)
 

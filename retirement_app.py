@@ -6,55 +6,26 @@ from datetime import date
 import io
 
 # --- APP CONFIGURATION ---
-st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
+st.set_page_config(page_title="Retirement Planner Pro - Expert Edition", layout="wide")
 
 # --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #0E1116 !important; color: #E5E7EB !important; }
-    .main { background-color: #0E1116 !important; }
     .input-card {
         background-color: #1A2233 !important; padding: 25px; border-radius: 10px;
         border: 1px solid #374151; color: #E5E7EB !important;
     }
-    .result-text { color: #22C55E !important; font-family: 'Courier New', monospace; font-weight: bold; }
-    .quote-text { color: #22C55E !important; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
     .stButton>button {
         background-color: #22C55E !important; color: white !important; width: 100%;
         border: none; font-weight: bold; height: 3.5em; border-radius: 8px;
     }
-    .stButton>button:hover { background-color: #16a34a !important; }
-    label, p, span, h1, h2, h3 { color: #E5E7EB !important; }
-    [data-testid="stMetricLabel"] { color: #9CA3AF !important; }
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; }
-
-    .dev-container {
-        text-align: center;
-        margin-bottom: 25px;
-    }
-    .dev-btn {
-        display: inline-block;
-        padding: 8px 16px;
-        margin: 5px;
-        border-radius: 5px;
-        text-decoration: none !important;
-        font-weight: bold;
-        color: white !important;
-        font-size: 13px;
-    }
+    .dev-container { text-align: center; margin-bottom: 25px; }
+    .dev-btn { display: inline-block; padding: 8px 16px; margin: 5px; border-radius: 5px; text-decoration: none !important; font-weight: bold; color: white !important; font-size: 13px; }
     .wa-btn { background-color: #25D366; }
     .fb-btn { background-color: #1877F2; }
     </style>
     """, unsafe_allow_html=True)
-
-# --- MOTIVATION QUOTES ---
-all_quotes = [
-    "“Investment is not a one-time decision, it is a lifetime habit.”",
-    "“Wealth is not created overnight; it grows with consistency.”",
-    "“The day you start a SIP, your future begins.”",
-    "“SIP to build wealth, SWP to live life.”",
-    "“Start today, for the sake of tomorrow.”"
-]
 
 # --- CORE LOGIC ---
 def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount_real):
@@ -106,10 +77,10 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
         
         annual_withdrawals.append({
             "User Age": r_age + year,
-            "Retirement Year": year + 1,
-            "Yearly Withdrawal Amount": round(monthly_expense_this_year * 12),
-            "Monthly Pension Amount": round(monthly_expense_this_year),
-            "Balance Wealth (Corpus)": round(current_balance)
+            "Year of Retirement": f"Year {year + 1}",
+            "Yearly Requirement": round(monthly_expense_this_year * 12),
+            "Monthly Pension": round(monthly_expense_this_year),
+            "Wealth Status": round(current_balance)
         })
     
     return {
@@ -126,7 +97,6 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 
 # --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Future Wealth</p>", unsafe_allow_html=True)
 
 st.markdown(f"""
     <div class="dev-container">
@@ -141,121 +111,95 @@ user_name = st.text_input("Name of the User", value="Valued User")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 👤 Personal Information")
-    current_age = st.number_input("Current Age", value=30, min_value=0, max_value=100, step=1)
-    retire_age = st.number_input("Retirement Age", value=60, min_value=current_age+1, max_value=110, step=1)
-    life_exp = st.number_input("Expected Life Expectancy", value=85, min_value=retire_age+1, max_value=120, step=1)
-    current_expense = st.number_input("Current Monthly Expense (₹)", value=30000, min_value=1, step=500)
+    st.markdown("### 👤 Basic Details")
+    current_age = st.number_input("Current Age", value=30)
+    retire_age = st.number_input("Retirement Age", value=60)
+    life_exp = st.number_input("Planning Until Age", value=85)
+    current_expense = st.number_input("Monthly Expense Needed Today (₹)", value=30000)
 
 with col2:
-    st.markdown("### 💰 Investment Details")
-    inf_rate = st.number_input("Inflation Rate (%)", value=6.0, step=0.1, format="%.1f")
-    existing_corp = st.number_input("Existing Savings (₹)", value=0, min_value=0, step=5000)
-    current_sip = st.number_input("Current Monthly SIP (₹)", value=0, min_value=0, step=100)
-    pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, min_value=0.1, step=0.1, format="%.1f")
-    post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, min_value=0.1, step=0.1, format="%.1f")
-    
-    st.markdown("""
-        <div style='background-color: #1F2937; padding: 15px; border-radius: 8px; border-left: 5px solid #22C55E; margin-bottom: 12px;'>
-            <p style='color: #E5E7EB; margin: 0; font-size: 14px; line-height: 1.6;'>
-                <strong>💡 LEGACY എമൗണ്ട് എന്താണ്?</strong><br>
-                "നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക ഇവിടെ രേഖപ്പെടുത്തുക. നിങ്ങൾ കണക്കാക്കുന്ന കാലയളവ് വരെ ജീവിച്ചാൽ, ഈ തുക അതിന്റെ പൂർണ്ണ മൂല്യത്തിൽ തന്നെ അവർക്ക് ലഭ്യമാകും."
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    legacy_amount = st.number_input("Legacy Amount - Today's Real Value (₹)", value=0, min_value=0, step=100000)
+    st.markdown("### 💰 Financial Data")
+    inf_rate = st.number_input("Inflation Rate (%)", value=6.0)
+    existing_corp = st.number_input("Existing Fund (₹)", value=0)
+    current_sip = st.number_input("Monthly Investment (₹)", value=0)
+    pre_ret_rate = st.number_input("Expected Returns (%)", value=12.0)
+    post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0)
+    legacy_amount = st.number_input("Legacy Amount (Today's Value) (₹)", value=0)
 st.markdown('</div>', unsafe_allow_html=True)
 
-if st.button("Calculate"):
+if st.button("Generate Detailed Plan"):
     res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, inf_rate, current_sip, existing_corp, pre_ret_rate, post_ret_rate, legacy_amount)
     st.session_state.res = res
     st.session_state.user_name = user_name
     
-    st.divider()
-    r1, r2 = st.columns(2)
-    with r1:
-        st.metric("Monthly Expense at Retirement", f"₹ {res['future_exp']:,}")
-        st.metric("Total Fund Needed (Corpus)", f"₹ {res['corp_req']:,}")
-    with r2:
-        st.metric("Projected Total Savings", f"₹ {res['total_sav']:,}")
-        st.metric("Shortfall (Gap in Fund)", f"₹ {res['shortfall']:,}", delta_color="inverse")
-
-    if res["shortfall"] > 0:
-        st.error("📉 ACTION REQUIRED: SHORTFALL DETECTED")
-        st.markdown(f"To meet your goal, you need to invest:")
-        st.markdown(f"🔹 **Additional Monthly SIP:** ₹ {res['req_sip']:,}")
-        st.markdown(f"🔹 **OR One-time Investment Today:** ₹ {res['req_lumpsum']:,}")
-
-    st.write("### Yearly Retirement Cashflow Plan")
+    st.success(f"Plan Generated for {user_name}!")
     st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
 
-# --- EXCEL DOWNLOAD (PROFESSIONAL VERSION) ---
-if 'res' in st.session_state and st.session_state.res is not None:
+# --- EXCEL DOWNLOAD (OPTIMIZED) ---
+if 'res' in st.session_state:
     res = st.session_state.res
     u_name = st.session_state.user_name
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         workbook = writer.book
-        worksheet = workbook.add_worksheet('Retirement Plan')
+        worksheet = workbook.add_worksheet('Financial Plan')
         
-        # Styles
+        # Formats
         header_fmt = workbook.add_format({'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
         cell_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
         curr_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
         title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter'})
-        desc_fmt = workbook.add_format({'italic': True, 'font_color': '#C00000', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
+        info_fmt = workbook.add_format({'italic': True, 'font_color': '#555555', 'text_wrap': True, 'font_size': 11})
 
-        # Disclaimer
-        worksheet.merge_range('A1:E4', "DISCLAIMER: This report is a mathematical projection based on your inputs. Market conditions and practical results may vary. Consult a financial advisor before making investment decisions.", desc_fmt)
+        # 1. Report Title & Info
+        worksheet.merge_range('A1:E2', f'COMPLETE RETIREMENT STRATEGY FOR {u_name.upper()}', title_fmt)
+        worksheet.write('A3', 'Plan Prepared On:', workbook.add_format({'bold': True}))
+        worksheet.write('B3', str(date.today()), cell_fmt)
 
-        # Title
-        worksheet.merge_range('A6:E6', f'PERSONALIZED RETIREMENT PLAN FOR {u_name.upper()}', title_fmt)
-        worksheet.write('A7', 'Report Date:', workbook.add_format({'bold': True}))
-        worksheet.write('B7', str(date.today()), cell_fmt)
-
-        # 1. Inputs Section
-        worksheet.merge_range('A9:B9', 'YOUR INPUT DATA', header_fmt)
-        input_data = [
-            ["Current Age", current_age], ["Target Retirement Age", retire_age], ["Planning Until Age", life_exp],
-            ["Current Monthly Expenses", current_expense], ["Assumed Inflation (%)", inf_rate],
-            ["Existing Savings Fund", existing_corp], ["Existing Monthly SIP", current_sip],
-            ["Returns Before Retirement (%)", pre_ret_rate], ["Returns After Retirement (%)", post_ret_rate]
+        # 2. Key Highlights (Results)
+        worksheet.merge_range('A5:E5', 'FINANCIAL GOALS & SHORTFALL ANALYSIS', header_fmt)
+        summary = [
+            ["Monthly Expense Needed at Age " + str(retire_age), res['future_exp']],
+            ["Total Wealth Fund Required (Corpus)", res['corp_req']],
+            ["Projected Fund from Current Savings", res['total_sav']],
+            ["Fund Shortfall (Extra Needed)", res['shortfall']],
+            ["Recommended Additional Monthly SIP", res['req_sip']],
+            ["OR Lumpsum Investment Needed Today", res['req_lumpsum']]
         ]
-        for i, (k, v) in enumerate(input_data):
-            worksheet.write(i+10, 0, k, cell_fmt)
-            worksheet.write(i+10, 1, v, cell_fmt)
+        for i, (label, val) in enumerate(summary):
+            worksheet.merge_range(i+6, 0, i+6, 2, label, cell_fmt)
+            worksheet.merge_range(i+6, 3, i+6, 4, val, curr_fmt)
 
-        # 2. Results Section
-        worksheet.merge_range('D9:E9', 'RETIREMENT GOAL SUMMARY', header_fmt)
-        summary_data = [
-            ["Monthly Expense at Retirement", res['future_exp']], ["Total Wealth Fund Needed", res['corp_req']],
-            ["Projected Fund from Current Savings", res['total_sav']], ["Shortfall (Extra Fund Needed)", res['shortfall']],
-            ["Additional Monthly SIP Required", res['req_sip']], ["OR Lumpsum Needed Today", res['req_lumpsum']],
-            ["Desired Legacy (Real Value)", res['legacy_real']], ["Nominal Legacy at End of Term", res['legacy_nominal']]
-        ]
-        for i, (k, v) in enumerate(summary_data):
-            worksheet.write(i+10, 3, k, cell_fmt)
-            worksheet.write(i+10, 4, v, curr_fmt)
-
-        # 3. Yearly Breakdown
-        worksheet.merge_range('A22:E22', 'YEAR-BY-YEAR RETIREMENT CASHFLOW ANALYSIS', header_fmt)
-        table_headers = ["User Age", "Retirement Year", "Yearly Withdrawal Amount", "Monthly Pension Amount", "Remaining Balance Wealth"]
-        for c, h in enumerate(table_headers):
-            worksheet.write(23, c, h, header_fmt)
+        # 3. Yearly Wealth Chart
+        start_row = 14
+        worksheet.merge_range(f'A{start_row}:E{start_row}', 'YEAR-BY-YEAR WEALTH & WITHDRAWAL PLAN', header_fmt)
+        headers = ["Your Age", "Year of Retirement", "Yearly Cash Requirement", "Monthly Pension", "Wealth Status (Balance)"]
+        for c, h in enumerate(headers):
+            worksheet.write(start_row, c, h, header_fmt)
         
         for r, row in enumerate(res['annual_withdrawals']):
-            worksheet.write(r+24, 0, row["User Age"], cell_fmt)
-            worksheet.write(r+24, 1, row["Retirement Year"], cell_fmt)
-            worksheet.write(r+24, 2, row["Yearly Withdrawal Amount"], curr_fmt)
-            worksheet.write(r+24, 3, row["Monthly Pension Amount"], curr_fmt)
-            worksheet.write(r+24, 4, row["Balance Wealth (Corpus)"], curr_fmt)
+            curr_r = start_row + 1 + r
+            worksheet.write(curr_r, 0, row["User Age"], cell_fmt)
+            worksheet.write(curr_r, 1, row["Year of Retirement"], cell_fmt)
+            worksheet.write(curr_r, 2, row["Yearly Requirement"], curr_fmt)
+            worksheet.write(curr_r, 3, row["Monthly Pension"], curr_fmt)
+            worksheet.write(curr_r, 4, row["Wealth Status"], curr_fmt)
 
-        # Column Formatting (Ensures no '#####' error)
-        worksheet.set_column('A:A', 30)
-        worksheet.set_column('B:B', 20)
-        worksheet.set_column('C:C', 30) # Yearly Withdrawal
-        worksheet.set_column('D:D', 30) # Monthly Amount
-        worksheet.set_column('E:E', 35) # Balance Wealth
+        # 4. Adding Explanatory Notes at the bottom
+        last_row = start_row + len(res['annual_withdrawals']) + 2
+        notes = [
+            "* Yearly Cash Requirement: ഓരോ വർഷവും നിങ്ങളുടെ ജീവിതച്ചെലവിനായി ആവശ്യമായ തുക (പണപ്പെരുപ്പം ഉൾപ്പെടെ).",
+            "* Monthly Pension: ഓരോ മാസവും നിങ്ങളുടെ അക്കൗണ്ടിലേക്ക് വിഭാവനം ചെയ്യുന്ന തുക.",
+            "* Wealth Status (Balance): എല്ലാ ചെലവുകൾക്കും ശേഷം നിങ്ങളുടെ പക്കൽ അവശേഷിക്കുന്ന നിക്ഷേപ മൂല്യം."
+        ]
+        for i, note in enumerate(notes):
+            worksheet.merge_range(last_row + i, 0, last_row + i, 4, note, info_fmt)
 
-    st.download_button(label="📥 Download Detailed Excel Report", data=buffer.getvalue(), file_name=f"Retirement_Report_{u_name}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        # Set Column Widths
+        worksheet.set_column('A:A', 25)
+        worksheet.set_column('B:B', 25)
+        worksheet.set_column('C:C', 30)
+        worksheet.set_column('D:D', 30)
+        worksheet.set_column('E:E', 35)
+
+    st.download_button(label="📥 Download This Detailed Professional Report", data=buffer.getvalue(), file_name=f"Retirement_Expert_Plan_{u_name}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

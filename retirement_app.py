@@ -41,7 +41,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sip, e_co
     
     corp_req = round(high)
     
-    # 3. Pre-retirement Growth
+    # 3. Pre-retirement Growth (Considering existing savings and current SIP)
     future_existing = e_corp * (1 + monthly_pre_ret) ** months_to_retire
     if monthly_pre_ret > 0:
         future_sip = c_sip * (((1 + monthly_pre_ret) ** months_to_retire - 1) / monthly_pre_ret) * (1 + monthly_pre_ret)
@@ -129,7 +129,7 @@ def main():
         current_sip = st.number_input("Current Monthly SIP", 0)
         legacy = st.number_input("Legacy (Today's Value)", 0)
 
-    st.info("The legacy amount entered will be preserved and provided to your heirs at its full inflation-adjusted value at the end of the plan period.")
+    st.info("The legacy amount entered will be preserved and provided to your heirs at its full nominal value at the end of the plan period.")
 
     if st.button("Calculate"):
         res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
@@ -147,7 +147,7 @@ def main():
         df = pd.DataFrame(res["annual_withdrawals"])
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # Excel Export with Enhanced Branding & Professional Design
+        # Excel Export
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
@@ -162,83 +162,82 @@ def main():
             currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             description_fmt = workbook.add_format({'font_size': 9, 'italic': True, 'text_wrap': True, 'border': 1, 'align': 'left', 'valign': 'vcenter'})
             
-            # --- HEADER SECTION ---
+            # --- HEADER ---
             worksheet.merge_range('A1:G2', "RETIREMENT FINANCIAL STRATEGY REPORT", main_title_fmt)
-            worksheet.merge_range('A3:G3', f"This professional report was prepared for {user_name} by developer Shamsudeen Abdulla", branding_fmt)
+            worksheet.merge_range('A3:G3', f"Professionally prepared by Shamsudeen Abdulla for {user_name}", branding_fmt)
             worksheet.write('A4', f"Report Date: {date.today()}", value_fmt)
             
-            # --- CATEGORY 1: INVESTMENT INPUTS ---
-            worksheet.merge_range('A6:C6', "1. INVESTMENT INPUT PARAMETERS", section_header_fmt)
+            # --- INPUT PARAMETERS SECTION ---
+            worksheet.merge_range('A6:C6', "INVESTMENT INPUT PARAMETERS", section_header_fmt)
             worksheet.write('A7', 'Parameter', section_header_fmt)
             worksheet.write('B7', 'Value', section_header_fmt)
             worksheet.write('C7', 'Financial Description', section_header_fmt)
             
-            inputs = [
-                ["Current Age", c_age, "The current age of the investor today."],
-                ["Retirement Age", r_age, "The age at which the investor plans to retire from active work."],
-                ["Life Expectancy", l_exp, "The total expected life span for which the fund is designed."],
-                ["Monthly Expense (Today)", c_exp, "Monthly lifestyle expenses calculated in today's currency value."],
-                ["Inflation Rate (%)", f"{inf}%", "The expected annual increase in the cost of goods and services."],
-                ["Pre-Retirement Return (%)", f"{pre_r}%", "Expected annual return on investments until the retirement date."],
-                ["Post-Retirement Return (%)", f"{post_r}%", "Expected annual return on safe assets during the retirement phase."],
-                ["Existing Savings", existing_sav, "The lumpsum amount already saved for this financial goal."],
-                ["Current Monthly SIP", current_sip, "Ongoing monthly systematic investment toward retirement."],
-                ["Legacy (Today's Value)", legacy, "Desired wealth for heirs, measured in today's purchasing power."]
+            inputs_data = [
+                ["Current Age", c_age, "User's current age at the beginning of the plan."],
+                ["Retirement Age", r_age, "Target age to start retirement and withdrawals."],
+                ["Life Expectancy", l_exp, "The age until which the retirement fund is calculated to last."],
+                ["Monthly Expense (Today)", c_exp, "Lifestyle cost in today's currency for monthly sustenance."],
+                ["Inflation Rate (%)", f"{inf}%", "The expected annual increase in living costs."],
+                ["Pre-Retirement Return (%)", f"{pre_r}%", "Estimated annual ROI on savings until retirement age."],
+                ["Post-Retirement Return (%)", f"{post_r}%", "Estimated annual ROI on the fund during the withdrawal phase."],
+                ["Existing Savings", existing_sav, "Lumpsum amount already accumulated for this goal."],
+                ["Current Monthly SIP", current_sip, "Ongoing monthly investment towards retirement."],
+                ["Legacy (Today's Value)", legacy, "Desired inheritance amount in today's market value."]
             ]
             
-            for i, (p, v, d) in enumerate(inputs, start=7):
+            for i, (p, v, d) in enumerate(inputs_data, start=7):
                 worksheet.write(i, 0, p, label_fmt)
                 if isinstance(v, (int, float)) and v > 100: worksheet.write(i, 1, v, currency_fmt)
                 else: worksheet.write(i, 1, v, value_fmt)
                 worksheet.write(i, 2, d, description_fmt)
 
-            # --- CATEGORY 2: PLAN RESULTS ---
-            worksheet.merge_range('E6:G6', "2. COMPREHENSIVE PLAN RESULTS", section_header_fmt)
+            # --- RESULTS SUMMARY SECTION ---
+            worksheet.merge_range('E6:G6', "COMPREHENSIVE PLAN RESULTS", section_header_fmt)
             worksheet.write('E7', 'Metric', section_header_fmt)
-            worksheet.write('F7', 'Value / Amount', section_header_fmt)
+            worksheet.write('F7', 'Amount', section_header_fmt)
             worksheet.write('G7', 'Financial Description', section_header_fmt)
             
-            results = [
-                ["Required Corpus Fund", res['corp_req'], "Total target wealth needed at the moment of retirement."],
-                ["Projected Total Savings", res['total_sav'], "The estimated total wealth based on current savings and SIPs."],
-                ["Shortfall (Gap)", res['shortfall'], "The difference between your required corpus and total projected savings."],
-                ["Additional Monthly SIP", res['req_sip'], "Extra monthly investment needed to bridge the shortfall gap."],
-                ["Additional Lumpsum", res['req_lumpsum'], "A one-time investment required today to reach the goal."],
-                ["Legacy Nominal Value", res['legacy_nominal'], "The actual future value available for heirs at the end of the term."],
-                ["Total Withdrawn Sum", res['total_withdrawn_sum'], "The cumulative total of all withdrawals made during retirement."]
+            results_data = [
+                ["Required Corpus Fund", res['corp_req'], "Total target wealth needed at the start of retirement."],
+                ["Projected Savings", res['total_sav'], "Total estimated fund based on current savings and ongoing SIP."],
+                ["Shortfall (Gap)", res['shortfall'], "The deficit between your target corpus and projected fund."],
+                ["Additional Monthly SIP", res['req_sip'], "Extra monthly SIP needed to reach the goal."],
+                ["Additional Lumpsum", res['req_lumpsum'], "One-time investment required today to bridge the gap."],
+                ["Legacy Nominal Value", res['legacy_nominal'], "Actual inflation-adjusted amount heirs will receive."],
+                ["Total Withdrawn Sum", res['total_withdrawn_sum'], "Cumulative amount of all withdrawals over retirement."]
             ]
             
-            for i, (p, v, d) in enumerate(results, start=7):
+            for i, (p, v, d) in enumerate(results_data, start=7):
                 worksheet.write(i, 4, p, label_fmt)
                 worksheet.write(i, 5, v, currency_fmt)
                 worksheet.write(i, 6, d, description_fmt)
 
-            # --- CATEGORY 3: YEARLY SCHEDULE ---
-            start_table = 18
-            worksheet.merge_range(start_table, 0, start_table, 4, "3. YEARLY WITHDRAWAL & CASHFLOW SCHEDULE", section_header_fmt)
+            # --- YEARLY TABLE ---
+            table_row = 18
+            worksheet.merge_range(table_row, 0, table_row, 4, "YEARLY WITHDRAWAL & REMAINING CORPUS", section_header_fmt)
             headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
             for col, h in enumerate(headers):
-                worksheet.write(start_table + 1, col, h, section_header_fmt)
+                worksheet.write(table_row + 1, col, h, section_header_fmt)
             
             for i, entry in enumerate(res['annual_withdrawals']):
-                row_idx = start_table + 2 + i
-                worksheet.write(row_idx, 0, entry['Age'], value_fmt)
-                worksheet.write(row_idx, 1, entry['Year'], value_fmt)
-                worksheet.write(row_idx, 2, entry['Annual Withdrawal'], currency_fmt)
-                worksheet.write(row_idx, 3, entry['Monthly Amount'], currency_fmt)
-                worksheet.write(row_idx, 4, entry['Remaining Corpus'], currency_fmt)
+                r_idx = table_row + 2 + i
+                worksheet.write(r_idx, 0, entry['Age'], value_fmt)
+                worksheet.write(r_idx, 1, entry['Year'], value_fmt)
+                worksheet.write(r_idx, 2, entry['Annual Withdrawal'], currency_fmt)
+                worksheet.write(r_idx, 3, entry['Monthly Amount'], currency_fmt)
+                worksheet.write(r_idx, 4, entry['Remaining Corpus'], currency_fmt)
             
-            # --- COLUMN WIDTHS & ALIGNMENT ---
+            # --- COLUMN WIDTHS ---
             worksheet.set_column('A:A', 25)
             worksheet.set_column('B:B', 15)
             worksheet.set_column('C:C', 50)
-            worksheet.set_column('D:D', 5) # Spacer
             worksheet.set_column('E:E', 25)
             worksheet.set_column('F:F', 20)
             worksheet.set_column('G:G', 50)
 
         st.download_button(
-            label="📥 Download Professional Excel Report",
+            label="📥 Download Professional Financial Report",
             data=output.getvalue(),
             file_name=f"Retirement_Strategy_{user_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

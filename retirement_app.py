@@ -27,6 +27,26 @@ st.markdown("""
     label, p, span, h1, h2, h3 { color: #E5E7EB !important; }
     [data-testid="stMetricLabel"] { color: #9CA3AF !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; }
+    
+    /* Social Buttons Styling */
+    .social-btn-container {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .social-btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: bold;
+        color: white !important;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+    }
+    .wa-btn { background-color: #25D366; }
+    .fb-btn { background-color: #1877F2; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -118,6 +138,18 @@ st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsaf
 st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Future Wealth</p>", unsafe_allow_html=True)
 # ✅ DEVELOPER NAME ADDED
 st.markdown("<p style='text-align: center; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>", unsafe_allow_html=True)
+
+# --- CONTACT BUTTONS ---
+st.markdown(f"""
+    <div class="social-btn-container">
+        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="social-btn wa-btn">
+            💬 WhatsApp Developer
+        </a>
+        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="social-btn fb-btn">
+            📘 Facebook Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 user_name = st.text_input("Name of the User", value="Valued User")
@@ -262,5 +294,3 @@ if 'res' in st.session_state and st.session_state.res is not None:
         file_name=f"Retirement_Plan_{u_name}_{date.today()}.xlsx", 
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-

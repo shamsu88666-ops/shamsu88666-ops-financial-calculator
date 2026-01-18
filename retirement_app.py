@@ -130,6 +130,10 @@ def main():
         inf = st.number_input("Inflation (%)", 7.0)
         pre_r = st.number_input("Pre-Ret Return (%)", 12.0)
         post_r = st.number_input("Post-Ret Return (%)", 8.0)
+        
+        # Legacy Explanation Text
+        st.info("നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക ഇവിടെ രേഖപ്പെടുത്തുക. നിങ്ങൾ ആഗ്രഹിക്കുന്ന തുക, അതിന്റെ പൂർണ്ണ മൂല്യത്തിൽ തന്നെ, അവർക്ക് ലഭ്യമാക്കും (നിങ്ങൾ പ്രതീക്ഷിക്കുന്ന ആയുസ്സ് വരെ നിങ്ങൾ ജീവിച്ചിരുന്നാൽ).")
+        
         legacy = st.number_input("Legacy (Today's Value)", 0)
         existing_sav = st.number_input("Existing Savings", 0)
         current_sip = st.number_input("Current SIP", 0)
@@ -138,7 +142,6 @@ def main():
         res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
         
         st.divider()
-        # Metrics including Legacy Nominal Value
         m1, m2 = st.columns(2)
         m1.metric("Required Corpus Fund", f"₹ {res['corp_req']:,}")
         m2.metric("Total Withdrawn Amount", f"₹ {res['total_withdrawn_sum']:,}")
@@ -157,19 +160,14 @@ def main():
             workbook = writer.book
             worksheet = workbook.add_worksheet('Retirement Plan')
             
-            # Formats
             header_fmt = workbook.add_format({'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             data_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
             currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             
-            # Disclaimer
             worksheet.merge_range('A1:E3', "DISCLAIMER: This report is generated based on basic mathematics. Practical results may vary. Your financial planning should not be based solely on this report.", disclaimer_fmt)
-            
-            # Title
             worksheet.merge_range('A5:E5', f"RETIREMENT PLAN REPORT - {user_name.upper()}", header_fmt)
             
-            # Parameters & Summary
             worksheet.write('A7', 'INPUT PARAMETERS', header_fmt)
             worksheet.write('B7', 'VALUE', header_fmt)
             worksheet.write('D7', 'RESULTS SUMMARY', header_fmt)
@@ -185,7 +183,6 @@ def main():
                 worksheet.write(i+1, 3, label, data_fmt)
                 worksheet.write(i+1, 4, val, currency_fmt)
 
-            # Yearly Table
             worksheet.merge_range('A14:E14', 'YEARLY CASHFLOW SCHEDULE', header_fmt)
             table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
             for col, h in enumerate(table_headers):
@@ -198,7 +195,7 @@ def main():
                 worksheet.write(row, 3, entry['Monthly Amount'], currency_fmt)
                 worksheet.write(row, 4, entry['Remaining Corpus'], currency_fmt)
             
-            worksheet.set_column('A:E', 25) # Adjust column width
+            worksheet.set_column('A:E', 25)
 
         st.download_button(
             label="📥 Download Professional Excel Report",

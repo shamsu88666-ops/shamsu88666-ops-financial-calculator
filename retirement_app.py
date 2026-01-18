@@ -104,7 +104,7 @@ def main():
     col1, col2 = st.columns(2)
     with col1:
         user_name = st.text_input("User Name", "Valued Client")
-        c_age = st.number_input("Current Age", min_value=1, max_value=100, value=40)
+        c_age = st.number_input("Current Age", min_value=1, max_value=100, value=30)
         r_age = st.number_input("Retirement Age", min_value=c_age+1, max_value=100, value=60)
         l_exp = st.number_input("Life Expectancy", min_value=r_age+1, max_value=120, value=85)
         c_exp = st.number_input("Monthly Expense (Today)", value=30000)
@@ -115,8 +115,8 @@ def main():
         existing_sav = st.number_input("Existing Savings", value=0)
         current_sip = st.number_input("Current Monthly SIP", value=0)
         
-        # UI IMPROVEMENT: Clearly displaying Legacy description
-        st.markdown("<small style='color: #6c757d;'><b>Legacy (Today's Value):</b> നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി ഇന്നത്തെ മൂല്യത്തിൽ മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക.</small>", unsafe_allow_html=True)
+        # UI IMPROVEMENT: Clearly displaying Legacy description in UI
+        st.info("Legacy (Today's Value): നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി ഇന്നത്തെ മൂല്യത്തിൽ മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക.")
         legacy = st.number_input("Legacy Amount", value=0)
 
     if st.button("Calculate Plan"):
@@ -129,7 +129,7 @@ def main():
         m3.metric("Legacy Nominal Value", f"₹ {res['legacy_nominal']:,}")
         
         if res['shortfall'] <= 0:
-            st.success(f"🎉 Congratulations {user_name}! Your current savings plan is perfectly on track. You have already secured your retirement goals!")
+            st.success(f"🎉 Congratulations {user_name}! Your current savings plan is perfectly on track.")
         else:
             st.error(f"Shortfall: ₹ {res['shortfall']:,}")
             st.warning(f"To reach the goal, you need an additional Monthly SIP of ₹ {res['req_sip']:,} OR a Lumpsum of ₹ {res['req_lumpsum']:,}")
@@ -152,34 +152,57 @@ def main():
             currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             desc_fmt = workbook.add_format({'font_size': 9, 'italic': True, 'text_wrap': True, 'border': 1, 'align': 'left'})
 
-            # FULL DISCLAIMER IN ENGLISH (Updated structure)
+            # Full Disclaimer
             disclaimer_text = ("IMPORTANT NOTICE: This report is generated based on basic mathematical calculations and the input values provided by you. "
                                "Your financial planning should not be based solely on this report. The developer (Shamsudeen Abdulla) shall not be held "
-                               "responsible for any financial losses or liabilities incurred. Please consult a professional Financial Advisor before "
-                               "implementing any decisions.")
+                               "responsible for any financial losses or liabilities incurred. Please consult a professional Financial Advisor.")
             worksheet.merge_range('A1:G4', disclaimer_text, disclaimer_fmt)
             
-            # Branding & Results
             worksheet.merge_range('A6:G7', "RETIREMENT FINANCIAL STRATEGY REPORT", main_title_fmt)
             worksheet.merge_range('A8:G8', f"Prepared by Shamsudeen Abdulla for {user_name}", branding_fmt)
             
-            # (Data continues...)
-            inputs = [["Current Age", c_age, "Investor's current age."], ["Retirement Age", r_age, "Target age to stop working."], ["Life Expectancy", l_exp, "Total planning horizon."], ["Monthly Expense", c_exp, "Cost of living in today's value."], ["Inflation Rate", f"{inf}%", "Annual price increase rate."], ["Pre-Ret Return", f"{pre_r}%", "ROI before retirement."], ["Post-Ret Return", f"{post_r}%", "ROI during retirement."], ["Existing Savings", existing_sav, "Lumpsum already available."], ["Current SIP", current_sip, "Current monthly investment."], ["Legacy (Today)", legacy, "Heir inheritance in today's value."]]
-            results = [["Required Corpus", res['corp_req'], "Total fund needed at retirement."], ["Projected Savings", res['total_sav'], "Estimated wealth with current plan."], ["Shortfall (Gap)", res['shortfall'], "Amount missing to reach goal."], ["Extra SIP Needed", res['req_sip'], "Additional SIP to bridge the gap."], ["Extra Lumpsum", res['req_lumpsum'], "One-time investment needed now."], ["Legacy Nominal", res['legacy_nominal'], "Actual amount heirs will get."], ["Total Withdrawn", res['total_withdrawn_sum'], "Sum of all life withdrawals."]]
+            # Data Rows
+            inputs = [
+                ["Current Age", c_age, "Investor's current age."],
+                ["Retirement Age", r_age, "Target age to stop working."],
+                ["Life Expectancy", l_exp, "Total planning horizon."],
+                ["Monthly Expense", c_exp, "Cost of living in today's value."],
+                ["Inflation Rate", f"{inf}%", "Annual price increase rate."],
+                ["Pre-Ret Return", f"{pre_r}%", "ROI before retirement."],
+                ["Post-Ret Return", f"{post_r}%", "ROI during retirement."],
+                ["Existing Savings", existing_sav, "Lumpsum already available."],
+                ["Current Monthly SIP", current_sip, "Ongoing investment."],
+                ["Legacy (Today)", legacy, "Desired inheritance for heirs."]
+            ]
+            
+            results = [
+                ["Required Corpus", res['corp_req'], "Total fund needed at retirement."],
+                ["Projected Savings", res['total_sav'], "Estimated wealth with current plan."],
+                ["Shortfall (Gap)", res['shortfall'], "Amount missing to reach goal."],
+                ["Extra SIP Needed", res['req_sip'], "Additional SIP to bridge the gap."],
+                ["Extra Lumpsum", res['req_lumpsum'], "One-time investment needed."],
+                ["Legacy Nominal", res['legacy_nominal'], "Actual amount heirs will get."],
+                ["Total Withdrawn", res['total_withdrawn_sum'], "Sum of all life withdrawals."]
+            ]
 
             worksheet.merge_range('A10:C10', "INVESTMENT INPUTS", section_header_fmt)
             worksheet.merge_range('E10:G10', "PLAN RESULTS", section_header_fmt)
 
-            for i in range(10):
-                worksheet.write(11+i, 0, inputs[i][0], cell_center)
-                worksheet.write(11+i, 1, inputs[i][1], currency_fmt if isinstance(inputs[i][1], int) else cell_center)
-                worksheet.write(11+i, 2, inputs[i][2], desc_fmt)
-                if i < 7:
-                    worksheet.write(11+i, 4, results[i][0], cell_center)
-                    worksheet.write(11+i, 5, results[i][1], currency_fmt)
-                    worksheet.write(11+i, 6, results[i][2], desc_fmt)
+            for i, item in enumerate(inputs):
+                worksheet.write(11+i, 0, item[0], cell_center)
+                # FIX: Remove Currency Format for Age inputs (Rows 11, 12, 13 in Excel)
+                if i < 3:
+                    worksheet.write(11+i, 1, item[1], cell_center)
+                else:
+                    worksheet.write(11+i, 1, item[1], currency_fmt if isinstance(item[1], (int, float)) and 'Rate' not in item[0] and 'Return' not in item[0] else cell_center)
+                worksheet.write(11+i, 2, item[2], desc_fmt)
 
-            # Table Header
+            for i, item in enumerate(results):
+                worksheet.write(11+i, 4, item[0], cell_center)
+                worksheet.write(11+i, 5, item[1], currency_fmt)
+                worksheet.write(11+i, 6, item[2], desc_fmt)
+
+            # Cashflow Table
             table_row = 24
             worksheet.merge_range(table_row, 0, table_row, 4, "YEARLY WITHDRAWAL & CASHFLOW SCHEDULE", section_header_fmt)
             cols = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
@@ -187,19 +210,18 @@ def main():
             
             for i, entry in enumerate(res['annual_withdrawals']):
                 r = table_row + 2 + i
-                worksheet.write(r, 0, entry['Age'], cell_center)
+                worksheet.write(r, 0, entry['Age'], cell_center) # Age is a plain number
                 worksheet.write(r, 1, entry['Year'], cell_center)
                 worksheet.write(r, 2, entry['Annual Withdrawal'], currency_fmt)
                 worksheet.write(r, 3, entry['Monthly Amount'], currency_fmt)
                 worksheet.write(r, 4, entry['Remaining Corpus'], currency_fmt)
 
-            # Fix Column Widths to prevent ######
+            # Column Widths to prevent ######
             worksheet.set_column('A:A', 22); worksheet.set_column('B:B', 18); worksheet.set_column('C:C', 45)
-            worksheet.set_column('E:E', 22); worksheet.set_column('F:F', 20); worksheet.set_column('G:G', 45)
-            # Table amounts
-            worksheet.set_column('C:E', 25) 
+            worksheet.set_column('E:E', 22); worksheet.set_column('F:F', 22); worksheet.set_column('G:G', 45)
+            worksheet.set_column('D:D', 25)
 
-        st.download_button("📥 Download Report", output.getvalue(), f"Strategy_{user_name}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        st.download_button("📥 Download Report", output.getvalue(), f"Retirement_Strategy_{user_name}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
 
 if __name__ == "__main__":
     main()

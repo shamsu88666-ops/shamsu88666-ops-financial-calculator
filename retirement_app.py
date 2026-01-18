@@ -102,12 +102,26 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sip, e_co
         "total_withdrawn_sum": round(total_withdrawn_sum)
     }
 
-# --- UI PART (Simplified for testing) ---
+# --- UI PART ---
 def main():
-    st.title("Retirement Planner (Synced Edition)")
+    st.markdown("<h1 style='text-align: center;'>Retirement Planner (Synced Edition)</h1>", unsafe_allow_html=True)
     
+    # Developer Contact Section
+    st.markdown(f"""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <p style="margin-bottom: 10px;">Developed by <b>Shamsudeen Abdulla</b></p>
+            <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" style="text-decoration: none;">
+                <button style="background-color: #25D366; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;">WhatsApp</button>
+            </a>
+            <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" style="text-decoration: none;">
+                <button style="background-color: #1877F2; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Facebook</button>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
+        user_name = st.text_input("User Name", "Valued User")
         c_age = st.number_input("Current Age", 30)
         r_age = st.number_input("Retirement Age", 60)
         l_exp = st.number_input("Life Expectancy", 85)
@@ -117,15 +131,78 @@ def main():
         pre_r = st.number_input("Pre-Ret Return (%)", 12.0)
         post_r = st.number_input("Post-Ret Return (%)", 8.0)
         legacy = st.number_input("Legacy (Today's Value)", 0)
+        existing_sav = st.number_input("Existing Savings", 0)
+        current_sip = st.number_input("Current SIP", 0)
 
     if st.button("Calculate"):
-        res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, 0, 0, pre_r, post_r, legacy)
+        res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
         
+        st.divider()
         st.metric("Required Corpus Fund", f"₹ {res['corp_req']:,}")
         st.metric("Total Withdrawn Amount", f"₹ {res['total_withdrawn_sum']:,}")
         
         st.write("### Yearly Breakdown")
-        st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True)
+        df = pd.DataFrame(res["annual_withdrawals"])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # Excel Export Logic
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            workbook = writer.book
+            worksheet = workbook.add_worksheet('Retirement Plan')
+            
+            # Formatting
+            header_fmt = workbook.add_format({'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+            data_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
+            currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+            disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+            
+            # Disclaimer
+            disclaimer_text = "DISCLAIMER: This report is generated based on basic mathematics and inputs provided. Practical results may vary. The developer is not responsible for financial decisions made based on this report."
+            worksheet.merge_range('A1:E3', disclaimer_text, disclaimer_fmt)
+            
+            # Inputs & Summary Title
+            worksheet.merge_range('A5:E5', f"RETIREMENT PLAN REPORT - {user_name.upper()}", header_fmt)
+            
+            # Input Section
+            worksheet.write('A7', 'Input Parameters', header_fmt)
+            worksheet.write('B7', 'Value', header_fmt)
+            inputs = [["Current Age", c_age], ["Retirement Age", r_age], ["Life Expectancy", l_exp], ["Monthly Expense", c_exp], ["Inflation Rate", inf]]
+            for i, (label, val) in enumerate(inputs, start=7):
+                worksheet.write(i, 0, label, data_fmt)
+                worksheet.write(i, 1, val, data_fmt)
+
+            # Results Section
+            worksheet.write('D7', 'Summary Results', header_fmt)
+            worksheet.write('E7', 'Amount', header_fmt)
+            summary = [["Required Corpus", res['corp_req']], ["Total Withdrawn", res['total_withdrawn_sum']], ["Extra SIP Needed", res['req_sip']]]
+            for i, (label, val) in enumerate(summary, start=7):
+                worksheet.write(i, 3, label, data_fmt)
+                worksheet.write(i, 4, val, currency_fmt)
+
+            # Table Header
+            worksheet.merge_range('A14:E14', 'YEARLY WITHDRAWAL SCHEDULE', header_fmt)
+            headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
+            for col, h in enumerate(headers):
+                worksheet.write(14, col, h, header_fmt)
+            
+            # Table Data
+            for row, entry in enumerate(res['annual_withdrawals'], start=15):
+                worksheet.write(row, 0, entry['Age'], data_fmt)
+                worksheet.write(row, 1, entry['Year'], data_fmt)
+                worksheet.write(row, 2, entry['Annual Withdrawal'], currency_fmt)
+                worksheet.write(row, 3, entry['Monthly Amount'], currency_fmt)
+                worksheet.write(row, 4, entry['Remaining Corpus'], currency_fmt)
+            
+            # Set Column Widths
+            worksheet.set_column('A:E', 25)
+            
+        st.download_button(
+            label="📥 Download Professional Excel Report",
+            data=output.getvalue(),
+            file_name=f"Retirement_Plan_{user_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 if __name__ == "__main__":
     main()

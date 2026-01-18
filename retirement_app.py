@@ -85,7 +85,8 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sip, e_co
         "req_lumpsum": round(req_extra_lumpsum),
         "legacy_nominal": round(legacy_nominal),
         "annual_withdrawals": annual_withdrawals,
-        "total_withdrawn_sum": round(total_withdrawn_sum)
+        "total_withdrawn_sum": round(total_withdrawn_sum),
+        "first_swp": expense_at_retirement # തുക ഇവിടെ ഉൾപ്പെടുത്തി
     }
 
 # --- UI PART ---
@@ -115,7 +116,6 @@ def main():
         existing_sav = st.number_input("Existing Savings", value=0)
         current_sip = st.number_input("Current Monthly SIP", value=0)
         
-        # UI IMPROVEMENT: Clearly displaying Legacy description in UI
         st.info("Legacy (Today's Value): നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി ഇന്നത്തെ മൂല്യത്തിൽ മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക.")
         legacy = st.number_input("Legacy Amount", value=0)
 
@@ -123,10 +123,11 @@ def main():
         res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
         
         st.divider()
-        m1, m2, m3 = st.columns(3)
+        m1, m2, m3, m4 = st.columns(4) # നാലാമതൊരു കോളം കൂടി ചേർത്തു
         m1.metric("Required Corpus", f"₹ {res['corp_req']:,}")
         m2.metric("Projected Savings", f"₹ {res['total_sav']:,}")
         m3.metric("Legacy Nominal Value", f"₹ {res['legacy_nominal']:,}")
+        m4.metric("First Month SWP", f"₹ {res['first_swp']:,}") # SWP തുക പ്രദർശിപ്പിച്ചു
         
         if res['shortfall'] <= 0:
             st.success(f"🎉 Congratulations {user_name}! Your current savings plan is perfectly on track.")
@@ -143,7 +144,6 @@ def main():
             workbook = writer.book
             worksheet = workbook.add_worksheet('Retirement Plan')
             
-            # Formats
             disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
             main_title_fmt = workbook.add_format({'bold': True, 'bg_color': '#1E5128', 'font_color': 'white', 'border': 2, 'align': 'center', 'valign': 'vcenter', 'font_size': 14})
             branding_fmt = workbook.add_format({'bold': True, 'align': 'center', 'font_size': 11})
@@ -152,7 +152,6 @@ def main():
             currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             desc_fmt = workbook.add_format({'font_size': 9, 'italic': True, 'text_wrap': True, 'border': 1, 'align': 'left'})
 
-            # Full Disclaimer
             disclaimer_text = ("IMPORTANT NOTICE: This report is generated based on basic mathematical calculations and the input values provided by you. "
                                "Your financial planning should not be based solely on this report. The developer (Shamsudeen Abdulla) shall not be held "
                                "responsible for any financial losses or liabilities incurred. Please consult a professional Financial Advisor.")
@@ -161,7 +160,6 @@ def main():
             worksheet.merge_range('A6:G7', "RETIREMENT FINANCIAL STRATEGY REPORT", main_title_fmt)
             worksheet.merge_range('A8:G8', f"Prepared by Shamsudeen Abdulla for {user_name}", branding_fmt)
             
-            # Data Rows
             inputs = [
                 ["Current Age", c_age, "Investor's current age."],
                 ["Retirement Age", r_age, "Target age to stop working."],
@@ -190,7 +188,6 @@ def main():
 
             for i, item in enumerate(inputs):
                 worksheet.write(11+i, 0, item[0], cell_center)
-                # FIX: Remove Currency Format for Age inputs (Rows 11, 12, 13 in Excel)
                 if i < 3:
                     worksheet.write(11+i, 1, item[1], cell_center)
                 else:
@@ -202,7 +199,6 @@ def main():
                 worksheet.write(11+i, 5, item[1], currency_fmt)
                 worksheet.write(11+i, 6, item[2], desc_fmt)
 
-            # Cashflow Table
             table_row = 24
             worksheet.merge_range(table_row, 0, table_row, 4, "YEARLY WITHDRAWAL & CASHFLOW SCHEDULE", section_header_fmt)
             cols = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
@@ -210,13 +206,12 @@ def main():
             
             for i, entry in enumerate(res['annual_withdrawals']):
                 r = table_row + 2 + i
-                worksheet.write(r, 0, entry['Age'], cell_center) # Age is a plain number
+                worksheet.write(r, 0, entry['Age'], cell_center)
                 worksheet.write(r, 1, entry['Year'], cell_center)
                 worksheet.write(r, 2, entry['Annual Withdrawal'], currency_fmt)
                 worksheet.write(r, 3, entry['Monthly Amount'], currency_fmt)
                 worksheet.write(r, 4, entry['Remaining Corpus'], currency_fmt)
 
-            # Column Widths to prevent ######
             worksheet.set_column('A:A', 22); worksheet.set_column('B:B', 18); worksheet.set_column('C:C', 45)
             worksheet.set_column('E:E', 22); worksheet.set_column('F:F', 22); worksheet.set_column('G:G', 45)
             worksheet.set_column('D:D', 25)

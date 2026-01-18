@@ -59,7 +59,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sip, e_co
         req_sip = (shortfall * monthly_pre_ret) / (((1 + monthly_pre_ret) ** months_to_retire - 1) * (1 + monthly_pre_ret))
         req_lumpsum = shortfall / ((1 + monthly_pre_ret) ** months_to_retire)
     
-    # 4. Generate Year-by-Year Schedule (Exact SWP Logic)
+    # 4. Generate Year-by-Year Schedule
     annual_withdrawals = []
     current_balance = corp_req
     total_withdrawn_sum = 0
@@ -116,107 +116,110 @@ def main():
     col1, col2 = st.columns(2)
     with col1:
         user_name = st.text_input("User Name", "Valued User")
-        c_age = st.number_input("Current Age (നിലവിലെ പ്രായം)", 30, help="നിങ്ങളുടെ നിലവിലെ പ്രായം.")
-        r_age = st.number_input("Retirement Age (വിരമിക്കുന്ന പ്രായം)", 60, help="ജോലിയിൽ നിന്നും വിരമിക്കാൻ ആഗ്രഹിക്കുന്ന പ്രായം.")
-        l_exp = st.number_input("Life Expectancy (ആയുർദൈർഘ്യം)", 85, help="നിങ്ങൾ എത്ര വയസ്സു വരെ പ്ലാൻ ചെയ്യുന്നു എന്ന ഏകദേശ കണക്ക്.")
-        c_exp = st.number_input("Monthly Expense (പ്രതിമാസ ചെലവ്)", 30000, help="ഇന്നത്തെ മൂല്യത്തിലുള്ള നിങ്ങളുടെ ശരാശരി പ്രതിമാസ ജീവിതച്ചെലവ്.")
+        c_age = st.number_input("Current Age", 30, help="Your current age.")
+        r_age = st.number_input("Retirement Age", 60, help="Age at which you plan to retire.")
+        l_exp = st.number_input("Life Expectancy", 85, help="Planning horizon for your life.")
+        c_exp = st.number_input("Monthly Expense (Today's Value)", 30000, help="Average monthly lifestyle cost at today's prices.")
 
     with col2:
-        inf = st.number_input("Inflation % (പണപ്പെരുപ്പം)", 7.0, help="സാധനങ്ങളുടെയും സേവനങ്ങളുടെയും വില വർദ്ധനവ് പ്രതീക്ഷിക്കുന്ന ശരാശരി നിരക്ക്.")
-        pre_r = st.number_input("Pre-Ret Return % (വിരമിക്കലിന് മുൻപുള്ള ലാഭം)", 12.0, help="നിക്ഷേപങ്ങളിൽ നിന്ന് വിരമിക്കുന്നതുവരെ പ്രതീക്ഷിക്കുന്ന വാർഷിക ലാഭവിഹിതം.")
-        post_r = st.number_input("Post-Ret Return % (വിരമിക്കലിന് ശേഷമുള്ള ലാഭം)", 8.0, help="വിരമിക്കലിന് ശേഷം സുരക്ഷിതമായ നിക്ഷേപങ്ങളിൽ നിന്ന് പ്രതീക്ഷിക്കുന്ന ലാഭവിഹിതം.")
+        inf = st.number_input("Inflation Rate (%)", 7.0, help="Expected annual increase in cost of living.")
+        pre_r = st.number_input("Pre-Retirement Return (%)", 12.0, help="Expected annual ROI before retirement.")
+        post_r = st.number_input("Post-Retirement Return (%)", 8.0, help="Expected annual ROI after retirement.")
         
-        st.info("നിങ്ങളുടെ അനന്തരാവകാശികൾക്കായി മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക ഇവിടെ രേഖപ്പെടുത്തുക. നിങ്ങൾ ആഗ്രഹിക്കുന്ന തുക, അതിന്റെ പൂർണ്ണ മൂല്യത്തിൽ തന്നെ, അവർക്ക് ലഭ്യമാക്കും (നിങ്ങൾ പ്രതീക്ഷിക്കുന്ന ആയുസ്സ് വരെ നിങ്ങൾ ജീവിച്ചിരുന്നാൽ).")
-        legacy = st.number_input("Legacy (Today's Value)", 0, help="ഇന്നത്തെ മൂല്യത്തിൽ ഭാവി തലമുറയ്ക്കായി മാറ്റിവെക്കാൻ ആഗ്രഹിക്കുന്ന തുക.")
+        # English description for Legacy as requested
+        st.info("Enter the amount you wish to leave for your heirs. This amount will be provided to them at its full nominal value at the end of your life expectancy.")
+        legacy = st.number_input("Legacy (Today's Value)", 0, help="The target amount for heirs in today's currency value.")
         
-        existing_sav = st.number_input("Existing Savings (നിലവിലെ നിക്ഷേപം)", 0, help="ഈ ലക്ഷ്യത്തിനായി ഇപ്പോൾ നിങ്ങളുടെ പക്കലുള്ള തുക.")
-        current_sip = st.number_input("Current SIP (നിലവിലെ പ്രതിമാസ നിക്ഷേപം)", 0, help="നിങ്ങൾ ഇപ്പോൾ മാസാമാസം നിക്ഷേപിച്ചുകൊണ്ടിരിക്കുന്ന തുക.")
+        existing_sav = st.number_input("Existing Savings", 0, help="Current corpus already accumulated for retirement.")
+        current_sip = st.number_input("Current Monthly SIP", 0, help="Your current monthly investment towards this goal.")
 
     if st.button("Calculate"):
         res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
         
         st.divider()
-        st.subheader("Results Analysis (ഫിനാൻഷ്യൽ വിശകലനം)")
+        st.subheader("Financial Analysis Results")
         
         m1, m2 = st.columns(2)
-        m1.metric("Required Corpus Fund", f"₹ {res['corp_req']:,}", help="വിരമിക്കുന്ന സമയത്ത് നിങ്ങളുടെ പക്കൽ ഉണ്ടായിരിക്കേണ്ട ആകെ തുക.")
-        m2.metric("Total Withdrawn Amount", f"₹ {res['total_withdrawn_sum']:,}", help="വിരമിക്കൽ കാലയളവിൽ നിങ്ങൾ ആകെ പിൻവലിക്കുന്ന (ചെലവാക്കുന്ന) തുക.")
+        m1.metric("Required Corpus Fund", f"₹ {res['corp_req']:,}", help="Total wealth needed on the day of retirement.")
+        m2.metric("Total Withdrawn Amount", f"₹ {res['total_withdrawn_sum']:,}", help="Total sum of all monthly withdrawals during retirement.")
         
         m3, m4 = st.columns(2)
-        m3.metric("Legacy Nominal Value", f"₹ {res['legacy_nominal']:,}", help="പണപ്പെരുപ്പം കൂടി കണക്കാക്കി ആയുർദൈർഘ്യ കാലയളവിൽ ലഭിക്കുന്ന ലെഗസി തുക.")
-        m4.metric("Shortfall (Gap)", f"₹ {res['shortfall']:,}", help="നിങ്ങളുടെ ലക്ഷ്യവും നിലവിലെ സമ്പാദ്യവും തമ്മിലുള്ള വ്യത്യാസം.")
+        m3.metric("Legacy Nominal Value", f"₹ {res['legacy_nominal']:,}", help="The actual future value provided to heirs after inflation.")
+        m4.metric("Shortfall (Gap)", f"₹ {res['shortfall']:,}", help="The difference between your required corpus and projected savings.")
         
-        st.write("### Yearly Cashflow Breakdown (വാർഷിക വരവ്-ചെലവ് കണക്കുകൾ)")
+        st.write("### Yearly Cashflow Schedule")
         df = pd.DataFrame(res["annual_withdrawals"])
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # Excel Export with Financial Descriptions
+        # Excel Export
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
             worksheet = workbook.add_worksheet('Retirement Plan')
             
+            # Formatting
             header_fmt = workbook.add_format({'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             data_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
             currency_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-            disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             desc_fmt = workbook.add_format({'font_size': 9, 'italic': True, 'text_wrap': True, 'border': 1, 'align': 'left'})
+            disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
             
-            worksheet.merge_range('A1:E3', "DISCLAIMER: This report is based on mathematical simulations. Market returns and inflation are subject to change. Consult a financial advisor for final decisions.", disclaimer_fmt)
-            worksheet.merge_range('A5:E5', f"RETIREMENT PLAN REPORT - {user_name.upper()}", header_fmt)
+            # Disclaimer & Title
+            worksheet.merge_range('A1:F3', "DISCLAIMER: This report is based on mathematical simulations. Market returns and inflation are subject to change. Consult a financial advisor for final decisions.", disclaimer_fmt)
+            worksheet.merge_range('A5:F5', f"RETIREMENT PLAN REPORT - {user_name.upper()}", header_fmt)
             
-            # Inputs
-            worksheet.write('A7', 'INPUT PARAMETERS', header_fmt)
-            worksheet.write('B7', 'VALUE', header_fmt)
-            worksheet.write('C7', 'DESCRIPTION (വിവരണം)', header_fmt)
-            
-            inputs_data = [
-                ["Current Age", c_age, "User's age today (നിലവിലെ പ്രായം)"],
-                ["Retirement Age", r_age, "Target age for retirement (വിരമിക്കൽ പ്രായം)"],
-                ["Life Expectancy", l_exp, "Estimated lifespan for planning (ആയുർദൈർഘ്യം)"],
-                ["Monthly Expense", c_exp, "Monthly lifestyle cost today (ഇന്നത്തെ ചെലവ്)"],
-                ["Inflation Rate", inf, "Annual price rise expected (പണപ്പെരുപ്പം)"],
-                ["Pre-Ret Return", pre_r, "ROI before retirement (നിക്ഷേപ നേട്ടം - വിരമിക്കലിന് മുൻപ്)"],
-                ["Post-Ret Return", post_r, "ROI after retirement (നിക്ഷേപ നേട്ടം - വിരമിക്കലിന് ശേഷം)"]
-            ]
-            
-            for row, (lbl, val, desc) in enumerate(inputs_data, start=8):
-                worksheet.write(row, 0, lbl, data_fmt)
-                worksheet.write(row, 1, val, data_fmt)
-                worksheet.write(row, 2, desc, desc_fmt)
+            # Header Row
+            worksheet.write('A7', 'CATEGORY', header_fmt)
+            worksheet.write('B7', 'PARAMETER', header_fmt)
+            worksheet.write('C7', 'VALUE', header_fmt)
+            worksheet.write('D7', 'FINANCIAL DESCRIPTION', header_fmt)
 
-            # Results
-            worksheet.write('D8', 'RESULTS SUMMARY', header_fmt)
-            worksheet.write('E8', 'AMOUNT', header_fmt)
-            
-            summary_data = [
-                ["Required Corpus", res['corp_req']],
-                ["Total Withdrawn", res['total_withdrawn_sum']],
-                ["Legacy Nominal", res['legacy_nominal']],
-                ["Shortfall", res['shortfall']]
+            # Data sections
+            row = 7
+            params = [
+                ["INPUT", "Current Age", c_age, "User's current age today."],
+                ["INPUT", "Retirement Age", r_age, "Target age for stopping professional work."],
+                ["INPUT", "Life Expectancy", l_exp, "The age until which financial support is planned."],
+                ["INPUT", "Monthly Expense", c_exp, "Monthly cost of living at current market prices."],
+                ["INPUT", "Inflation Rate", f"{inf}%", "The rate at which purchasing power decreases annually."],
+                ["INPUT", "Pre-Ret Return", f"{pre_r}%", "Expected annual ROI on investments before retirement."],
+                ["INPUT", "Post-Ret Return", f"{post_r}%", "Expected annual ROI on safe investments after retirement."],
+                ["INPUT", "Legacy (Today)", legacy, "Desired wealth for heirs in today's currency terms."],
+                ["RESULT", "Required Corpus", res['corp_req'], "Total target wealth needed at the start of retirement."],
+                ["RESULT", "Total Withdrawn", res['total_withdrawn_sum'], "The total cumulative amount spent during retirement years."],
+                ["RESULT", "Legacy (Nominal)", res['legacy_nominal'], "Actual amount available for heirs at the end of the term."],
+                ["RESULT", "Shortfall (Gap)", res['shortfall'], "The deficit between target corpus and existing projections."]
             ]
-            for row, (lbl, val) in enumerate(summary_data, start=9):
-                worksheet.write(row, 3, lbl, data_fmt)
-                worksheet.write(row, 4, val, currency_fmt)
+
+            for cat, param, val, desc in params:
+                row += 1
+                worksheet.write(row, 0, cat, data_fmt)
+                worksheet.write(row, 1, param, data_fmt)
+                if isinstance(val, (int, float)) and val > 100:
+                    worksheet.write(row, 2, val, currency_fmt)
+                else:
+                    worksheet.write(row, 2, val, data_fmt)
+                worksheet.write(row, 3, desc, desc_fmt)
 
             # Yearly Table
-            worksheet.merge_range('A17:E17', 'YEARLY CASHFLOW SCHEDULE (SWP SIMULATION)', header_fmt)
-            table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
-            for col, h in enumerate(table_headers):
-                worksheet.write(17, col, h, header_fmt)
+            table_start = row + 3
+            worksheet.merge_range(table_start, 0, table_start, 4, 'YEARLY CASHFLOW SCHEDULE (SWP SIMULATION)', header_fmt)
+            headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
+            for col, h in enumerate(headers):
+                worksheet.write(table_start + 1, col, h, header_fmt)
             
-            for row, entry in enumerate(res['annual_withdrawals'], start=18):
-                worksheet.write(row, 0, entry['Age'], data_fmt)
-                worksheet.write(row, 1, entry['Year'], data_fmt)
-                worksheet.write(row, 2, entry['Annual Withdrawal'], currency_fmt)
-                worksheet.write(row, 3, entry['Monthly Amount'], currency_fmt)
-                worksheet.write(row, 4, entry['Remaining Corpus'], currency_fmt)
+            for i, entry in enumerate(res['annual_withdrawals']):
+                r = table_start + 2 + i
+                worksheet.write(r, 0, entry['Age'], data_fmt)
+                worksheet.write(r, 1, entry['Year'], data_fmt)
+                worksheet.write(r, 2, entry['Annual Withdrawal'], currency_fmt)
+                worksheet.write(r, 3, entry['Monthly Amount'], currency_fmt)
+                worksheet.write(r, 4, entry['Remaining Corpus'], currency_fmt)
             
-            worksheet.set_column('A:A', 15)
-            worksheet.set_column('B:B', 15)
-            worksheet.set_column('C:C', 45)
-            worksheet.set_column('D:D', 25)
-            worksheet.set_column('E:E', 25)
+            worksheet.set_column('A:B', 20)
+            worksheet.set_column('C:C', 18)
+            worksheet.set_column('D:D', 50)
+            worksheet.set_column('E:F', 20)
 
         st.download_button(
             label="📥 Download Professional Excel Report",

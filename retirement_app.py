@@ -212,7 +212,7 @@ if st.button("Calculate"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
 
-# --- EXCEL DOWNLOAD (OPTIMIZED DESIGN) ---
+# --- EXCEL DOWNLOAD (WITH FIXED COLUMN WIDTHS) ---
 if 'res' in st.session_state and st.session_state.res is not None:
     res = st.session_state.res
     u_name = st.session_state.user_name
@@ -221,7 +221,6 @@ if 'res' in st.session_state and st.session_state.res is not None:
         workbook = writer.book
         worksheet = workbook.add_worksheet('Retirement Plan')
         
-        # Formats
         header_fmt = workbook.add_format({
             'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 
             'border': 1, 'align': 'center', 'valign': 'vcenter'
@@ -240,7 +239,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
             'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter'
         })
 
-        # 1. DISCLAIMER - Centered and Full Width
+        # 1. DISCLAIMER
         worksheet.merge_range('A1:E4', 
             "DISCLAIMER: This report is generated based on basic mathematics and the inputs provided by you. "
             "Practical results may vary significantly. Your financial planning should not be based solely on this report. "
@@ -255,7 +254,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
         worksheet.write('D7', 'Date:', workbook.add_format({'bold': True, 'align': 'right'}))
         worksheet.write('E7', str(date.today()), normal_fmt)
 
-        # 3. INPUT PARAMETERS (Left Side)
+        # 3. INPUT PARAMETERS
         worksheet.merge_range('A9:B9', '1. INPUT PARAMETERS', header_fmt)
         inputs = [
             ["Current Age", current_age], ["Retirement Age", retire_age], ["Life Expectancy", life_exp],
@@ -268,7 +267,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(i+10, 0, l, normal_fmt)
             worksheet.write(i+10, 1, v, normal_fmt)
 
-        # 4. RESULTS SUMMARY (Right Side)
+        # 4. RESULTS SUMMARY
         worksheet.merge_range('D9:E9', '2. RESULTS SUMMARY', header_fmt)
         summary = [
             ["Exp at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
@@ -280,7 +279,7 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(i+10, 3, l, normal_fmt)
             worksheet.write(i+10, 4, v, currency_fmt)
 
-        # 5. CASHFLOW TABLE - 100% Center Aligned
+        # 5. CASHFLOW TABLE (Fixed Header for "Annual Withdrawal")
         worksheet.merge_range('A22:E22', '3. YEARLY CASHFLOW & REMAINING CORPUS', header_fmt)
         table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
         for c, h in enumerate(table_headers):
@@ -293,12 +292,13 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(r+24, 3, row["Monthly Amount"], currency_fmt)
             worksheet.write(r+24, 4, row["Remaining Corpus"], currency_fmt)
 
-        # 6. ADJUST COLUMN WIDTHS - For Perfect Scannability
-        worksheet.set_column('A:A', 25) # Label column
-        worksheet.set_column('B:B', 15) # Value column
-        worksheet.set_column('C:C', 5)  # Gap
-        worksheet.set_column('D:D', 25) # Label column
-        worksheet.set_column('E:E', 25) # Result column
+        # 6. ADJUST COLUMN WIDTHS (Perfect Fit for Large Numbers)
+        # സംഖ്യകൾ വലുതായാലും '#####' വരാതിരിക്കാൻ വീതി കൂട്ടിയിട്ടുണ്ട്.
+        worksheet.set_column('A:A', 25) # Label
+        worksheet.set_column('B:B', 18) # Value
+        worksheet.set_column('C:C', 20) # Withdrawal (ഇവിടെയാണ് ##### കണ്ടിരുന്നത്)
+        worksheet.set_column('D:D', 22) # Monthly Amount
+        worksheet.set_column('E:E', 25) # Remaining Corpus
 
     st.download_button(
         label="📥 Download Excel Report", 

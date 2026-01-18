@@ -86,7 +86,7 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sip, e_co
         "legacy_nominal": round(legacy_nominal),
         "annual_withdrawals": annual_withdrawals,
         "total_withdrawn_sum": round(total_withdrawn_sum),
-        "first_swp": expense_at_retirement # തുക ഇവിടെ ഉൾപ്പെടുത്തി
+        "first_swp": expense_at_retirement
     }
 
 # --- UI PART ---
@@ -123,11 +123,11 @@ def main():
         res = calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf, current_sip, existing_sav, pre_r, post_r, legacy)
         
         st.divider()
-        m1, m2, m3, m4 = st.columns(4) # നാലാമതൊരു കോളം കൂടി ചേർത്തു
+        m1, m2, m3, m4 = st.columns(4)
         m1.metric("Required Corpus", f"₹ {res['corp_req']:,}")
         m2.metric("Projected Savings", f"₹ {res['total_sav']:,}")
         m3.metric("Legacy Nominal Value", f"₹ {res['legacy_nominal']:,}")
-        m4.metric("First Month SWP", f"₹ {res['first_swp']:,}") # SWP തുക പ്രദർശിപ്പിച്ചു
+        m4.metric("First Month SWP", f"₹ {res['first_swp']:,}")
         
         if res['shortfall'] <= 0:
             st.success(f"🎉 Congratulations {user_name}! Your current savings plan is perfectly on track.")
@@ -180,7 +180,8 @@ def main():
                 ["Extra SIP Needed", res['req_sip'], "Additional SIP to bridge the gap."],
                 ["Extra Lumpsum", res['req_lumpsum'], "One-time investment needed."],
                 ["Legacy Nominal", res['legacy_nominal'], "Actual amount heirs will get."],
-                ["Total Withdrawn", res['total_withdrawn_sum'], "Sum of all life withdrawals."]
+                ["Total Withdrawn", res['total_withdrawn_sum'], "Sum of all life withdrawals."],
+                ["1st Month SWP", res['first_swp'], "Required monthly withdrawal at start of retirement."]
             ]
 
             worksheet.merge_range('A10:C10', "INVESTMENT INPUTS", section_header_fmt)

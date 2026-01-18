@@ -27,26 +27,24 @@ st.markdown("""
     label, p, span, h1, h2, h3 { color: #E5E7EB !important; }
     [data-testid="stMetricLabel"] { color: #9CA3AF !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; }
-    
-    /* Social Buttons Styling */
-    .contact-container {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 20px;
+
+    /* New CSS for Developer Contact Buttons */
+    .dev-container {
+        text-align: center;
+        margin-bottom: 25px;
     }
-    .contact-btn {
-        padding: 10px 20px;
-        border-radius: 8px;
-        text-decoration: none;
+    .dev-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        margin: 5px;
+        border-radius: 5px;
+        text-decoration: none !important;
         font-weight: bold;
         color: white !important;
-        font-size: 14px;
-        transition: 0.3s;
+        font-size: 13px;
     }
     .wa-btn { background-color: #25D366; }
     .fb-btn { background-color: #1877F2; }
-    .contact-btn:hover { opacity: 0.8; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -136,18 +134,12 @@ def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_co
 # --- MAIN APP ---
 st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Future Wealth</p>", unsafe_allow_html=True)
-# ✅ DEVELOPER NAME ADDED
-st.markdown("<p style='text-align: center; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>", unsafe_allow_html=True)
-
-# --- CONTACT BUTTONS SECTION ---
+# ✅ DEVELOPER NAME AND CONTACT BUTTONS
 st.markdown(f"""
-    <div class="contact-container">
-        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="contact-btn wa-btn">
-            💬 WhatsApp Developer
-        </a>
-        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="contact-btn fb-btn">
-            📘 Facebook Profile
-        </a>
+    <div class="dev-container">
+        <p style='margin-bottom: 5px; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>
+        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="dev-btn wa-btn">WhatsApp Developer</a>
+        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="dev-btn fb-btn">Facebook Profile</a>
     </div>
     """, unsafe_allow_html=True)
 

@@ -212,7 +212,7 @@ if st.button("Calculate"):
 
 st.markdown("<p style='text-align: center; font-size: 0.8em; color: #9CA3AF;'>* Based on assumptions. Market risks apply.</p>", unsafe_allow_html=True)
 
-# --- EXCEL DOWNLOAD ---
+# --- EXCEL DOWNLOAD (OPTIMIZED DESIGN) ---
 if 'res' in st.session_state and st.session_state.res is not None:
     res = st.session_state.res
     u_name = st.session_state.user_name
@@ -221,88 +221,67 @@ if 'res' in st.session_state and st.session_state.res is not None:
         workbook = writer.book
         worksheet = workbook.add_worksheet('Retirement Plan')
         
-        # --- ENHANCED FORMATTING ---
-        # Header Format: Green Theme, Bold, Centered
+        # Formats
         header_fmt = workbook.add_format({
-            'bold': True, 
-            'bg_color': '#22C55E', 
-            'font_color': 'white', 
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter'
+            'bold': True, 'bg_color': '#22C55E', 'font_color': 'white', 
+            'border': 1, 'align': 'center', 'valign': 'vcenter'
         })
-        
-        # Normal Cell Format: Centered, Border
         normal_fmt = workbook.add_format({
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter'
+            'border': 1, 'align': 'center', 'valign': 'vcenter'
         })
-        
-        # Currency Format: Centered, Border, Rupee Symbol
         currency_fmt = workbook.add_format({
-            'num_format': '₹ #,##0', 
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter'
+            'num_format': '₹ #,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'
         })
-
-        # Title Format: Large, Bold
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center'})
-
-        # Disclaimer Format: Red Text, Wrapped, Centered
         disclaimer_fmt = workbook.add_format({
-            'italic': True, 
-            'font_color': '#C00000', 
-            'text_wrap': True, 
-            'border': 1, 
-            'valign': 'vcenter',
-            'align': 'center',
-            'font_size': 9
+            'italic': True, 'font_color': '#C00000', 'text_wrap': True, 
+            'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10
+        })
+        title_fmt = workbook.add_format({
+            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter'
         })
 
-        # --- EXCEL CONTENT ---
-        # 1. DISCLAIMER (Centered across columns A to E)
-        disclaimer_text = ("DISCLAIMER: This report is generated based on basic mathematics and the inputs provided by you. "
-                          "Practical results may vary significantly. Your financial planning should not be based solely on this report. "
-                          "The app developer shall not be held responsible for any financial liabilities, losses, or other damages "
-                          "incurred based on the information provided in this report.")
-        worksheet.merge_range('A1:E4', disclaimer_text, disclaimer_fmt)
+        # 1. DISCLAIMER - Centered and Full Width
+        worksheet.merge_range('A1:E4', 
+            "DISCLAIMER: This report is generated based on basic mathematics and the inputs provided by you. "
+            "Practical results may vary significantly. Your financial planning should not be based solely on this report. "
+            "The app developer shall not be held responsible for any financial liabilities, losses, or other damages "
+            "incurred based on the information provided in this report.", 
+            disclaimer_fmt)
 
         # 2. REPORT INFO
         worksheet.merge_range('A6:E6', 'RETIREMENT PLAN REPORT', title_fmt)
-        worksheet.write('A7', 'User Name:', workbook.add_format({'bold': True}))
+        worksheet.write('A7', 'User Name:', workbook.add_format({'bold': True, 'align': 'right'}))
         worksheet.write('B7', u_name, normal_fmt)
-        worksheet.write('D7', 'Generated on:', workbook.add_format({'bold': True}))
+        worksheet.write('D7', 'Date:', workbook.add_format({'bold': True, 'align': 'right'}))
         worksheet.write('E7', str(date.today()), normal_fmt)
 
-        # 3. INPUT PARAMETERS
+        # 3. INPUT PARAMETERS (Left Side)
         worksheet.merge_range('A9:B9', '1. INPUT PARAMETERS', header_fmt)
         inputs = [
             ["Current Age", current_age], ["Retirement Age", retire_age], ["Life Expectancy", life_exp],
-            ["Current Monthly Expense", current_expense], ["Inflation Rate (%)", inf_rate],
-            ["Existing Savings", existing_corp], ["Current Monthly SIP", current_sip],
-            ["Pre-retirement Return (%)", pre_ret_rate], ["Post-retirement Return (%)", post_ret_rate],
-            ["Legacy Amount (Today's Real Value)", legacy_amount]
+            ["Monthly Expense", current_expense], ["Inflation Rate (%)", inf_rate],
+            ["Existing Savings", existing_corp], ["Monthly SIP", current_sip],
+            ["Pre-ret Return (%)", pre_ret_rate], ["Post-ret Return (%)", post_ret_rate],
+            ["Legacy (Real Value)", legacy_amount]
         ]
         for i, (l, v) in enumerate(inputs):
             worksheet.write(i+10, 0, l, normal_fmt)
             worksheet.write(i+10, 1, v, normal_fmt)
 
-        # 4. RESULTS SUMMARY
+        # 4. RESULTS SUMMARY (Right Side)
         worksheet.merge_range('D9:E9', '2. RESULTS SUMMARY', header_fmt)
         summary = [
-            ["Expense at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
+            ["Exp at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
             ["Projected Savings", res['total_sav']], ["Shortfall", res['shortfall']],
-            ["Extra Monthly SIP Needed", res['req_sip']], ["One-time Lumpsum Needed", res['req_lumpsum']],
+            ["Additional SIP", res['req_sip']], ["Lumpsum Needed", res['req_lumpsum']],
             ["Legacy (Real)", res['legacy_real']], ["Legacy (Nominal)", res['legacy_nominal']]
         ]
         for i, (l, v) in enumerate(summary):
             worksheet.write(i+10, 3, l, normal_fmt)
             worksheet.write(i+10, 4, v, currency_fmt)
 
-        # 5. WITHDRAWAL SCHEDULE
-        worksheet.merge_range('A22:E22', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
+        # 5. CASHFLOW TABLE - 100% Center Aligned
+        worksheet.merge_range('A22:E22', '3. YEARLY CASHFLOW & REMAINING CORPUS', header_fmt)
         table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
         for c, h in enumerate(table_headers):
             worksheet.write(23, c, h, header_fmt)
@@ -314,12 +293,12 @@ if 'res' in st.session_state and st.session_state.res is not None:
             worksheet.write(r+24, 3, row["Monthly Amount"], currency_fmt)
             worksheet.write(r+24, 4, row["Remaining Corpus"], currency_fmt)
 
-        # --- COLUMN WIDTH ADJUSTMENT (Auto-fit equivalent) ---
-        worksheet.set_column('A:A', 28)
-        worksheet.set_column('B:B', 15)
-        worksheet.set_column('C:C', 5) # Spacer
-        worksheet.set_column('D:D', 28)
-        worksheet.set_column('E:E', 25)
+        # 6. ADJUST COLUMN WIDTHS - For Perfect Scannability
+        worksheet.set_column('A:A', 25) # Label column
+        worksheet.set_column('B:B', 15) # Value column
+        worksheet.set_column('C:C', 5)  # Gap
+        worksheet.set_column('D:D', 25) # Label column
+        worksheet.set_column('E:E', 25) # Result column
 
     st.download_button(
         label="📥 Download Excel Report", 

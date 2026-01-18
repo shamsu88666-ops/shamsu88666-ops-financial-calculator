@@ -29,24 +29,24 @@ st.markdown("""
     [data-testid="stMetricValue"] { color: #FFFFFF !important; }
     
     /* Social Buttons Styling */
-    .social-btn-container {
+    .contact-container {
         display: flex;
         justify-content: center;
-        gap: 15px;
+        gap: 10px;
         margin-bottom: 20px;
     }
-    .social-btn {
+    .contact-btn {
         padding: 10px 20px;
-        border-radius: 5px;
+        border-radius: 8px;
         text-decoration: none;
         font-weight: bold;
         color: white !important;
         font-size: 14px;
-        display: flex;
-        align-items: center;
+        transition: 0.3s;
     }
     .wa-btn { background-color: #25D366; }
     .fb-btn { background-color: #1877F2; }
+    .contact-btn:hover { opacity: 0.8; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -139,13 +139,13 @@ st.markdown("<p style='text-align: center; color: #9CA3AF;'>Designed for Your Fu
 # ✅ DEVELOPER NAME ADDED
 st.markdown("<p style='text-align: center; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>", unsafe_allow_html=True)
 
-# --- CONTACT BUTTONS ---
+# --- CONTACT BUTTONS SECTION ---
 st.markdown(f"""
-    <div class="social-btn-container">
-        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="social-btn wa-btn">
+    <div class="contact-container">
+        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="contact-btn wa-btn">
             💬 WhatsApp Developer
         </a>
-        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="social-btn fb-btn">
+        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="contact-btn fb-btn">
             📘 Facebook Profile
         </a>
     </div>

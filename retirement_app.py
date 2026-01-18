@@ -221,26 +221,63 @@ if 'res' in st.session_state and st.session_state.res is not None:
         workbook = writer.book
         worksheet = workbook.add_worksheet('Retirement Plan')
         
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1})
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 14})
-        currency_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1})
-        disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'valign': 'top'})
-        normal_fmt = workbook.add_format({'border': 1})
+        # --- ENHANCED FORMATTING ---
+        # Header Format: Green Theme, Bold, Centered
+        header_fmt = workbook.add_format({
+            'bold': True, 
+            'bg_color': '#22C55E', 
+            'font_color': 'white', 
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
+        
+        # Normal Cell Format: Centered, Border
+        normal_fmt = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
+        
+        # Currency Format: Centered, Border, Rupee Symbol
+        currency_fmt = workbook.add_format({
+            'num_format': '₹ #,##0', 
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
 
-        # DISCLAIMER
+        # Title Format: Large, Bold
+        title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center'})
+
+        # Disclaimer Format: Red Text, Wrapped, Centered
+        disclaimer_fmt = workbook.add_format({
+            'italic': True, 
+            'font_color': '#C00000', 
+            'text_wrap': True, 
+            'border': 1, 
+            'valign': 'vcenter',
+            'align': 'center',
+            'font_size': 9
+        })
+
+        # --- EXCEL CONTENT ---
+        # 1. DISCLAIMER (Centered across columns A to E)
         disclaimer_text = ("DISCLAIMER: This report is generated based on basic mathematics and the inputs provided by you. "
                           "Practical results may vary significantly. Your financial planning should not be based solely on this report. "
                           "The app developer shall not be held responsible for any financial liabilities, losses, or other damages "
                           "incurred based on the information provided in this report.")
-        worksheet.merge_range('A1:F4', disclaimer_text, disclaimer_fmt)
+        worksheet.merge_range('A1:E4', disclaimer_text, disclaimer_fmt)
 
-        # REPORT INFO
-        worksheet.write('A6', 'RETIREMENT PLAN REPORT', title_fmt)
-        worksheet.write('A7', f'User Name: {u_name}')
-        worksheet.write('A8', f'Generated on: {date.today()}')
+        # 2. REPORT INFO
+        worksheet.merge_range('A6:E6', 'RETIREMENT PLAN REPORT', title_fmt)
+        worksheet.write('A7', 'User Name:', workbook.add_format({'bold': True}))
+        worksheet.write('B7', u_name, normal_fmt)
+        worksheet.write('D7', 'Generated on:', workbook.add_format({'bold': True}))
+        worksheet.write('E7', str(date.today()), normal_fmt)
 
-        # INPUTS
-        worksheet.write('A10', '1. INPUT PARAMETERS', header_fmt)
+        # 3. INPUT PARAMETERS
+        worksheet.merge_range('A9:B9', '1. INPUT PARAMETERS', header_fmt)
         inputs = [
             ["Current Age", current_age], ["Retirement Age", retire_age], ["Life Expectancy", life_exp],
             ["Current Monthly Expense", current_expense], ["Inflation Rate (%)", inf_rate],
@@ -249,36 +286,40 @@ if 'res' in st.session_state and st.session_state.res is not None:
             ["Legacy Amount (Today's Real Value)", legacy_amount]
         ]
         for i, (l, v) in enumerate(inputs):
-            worksheet.write(i+11, 0, l, normal_fmt)
-            worksheet.write(i+11, 1, v, normal_fmt)
+            worksheet.write(i+10, 0, l, normal_fmt)
+            worksheet.write(i+10, 1, v, normal_fmt)
 
-        # RESULTS
-        worksheet.write('D10', '2. RESULTS SUMMARY', header_fmt)
+        # 4. RESULTS SUMMARY
+        worksheet.merge_range('D9:E9', '2. RESULTS SUMMARY', header_fmt)
         summary = [
             ["Expense at Retirement", res['future_exp']], ["Required Corpus", res['corp_req']],
             ["Projected Savings", res['total_sav']], ["Shortfall", res['shortfall']],
             ["Extra Monthly SIP Needed", res['req_sip']], ["One-time Lumpsum Needed", res['req_lumpsum']],
-            ["Legacy (Today's Real Value)", res['legacy_real']],
-            ["Legacy Nominal at Life Expectancy", res['legacy_nominal']]
+            ["Legacy (Real)", res['legacy_real']], ["Legacy (Nominal)", res['legacy_nominal']]
         ]
         for i, (l, v) in enumerate(summary):
-            worksheet.write(i+11, 3, l, normal_fmt)
-            worksheet.write(i+11, 4, v, currency_fmt)
+            worksheet.write(i+10, 3, l, normal_fmt)
+            worksheet.write(i+10, 4, v, currency_fmt)
 
-        # WITHDRAWAL SCHEDULE
-        worksheet.write('A23', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
+        # 5. WITHDRAWAL SCHEDULE
+        worksheet.merge_range('A22:E22', '3. YEARLY WITHDRAWAL & REMAINING CORPUS', header_fmt)
         table_headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Corpus"]
         for c, h in enumerate(table_headers):
-            worksheet.write(24, c, h, header_fmt)
+            worksheet.write(23, c, h, header_fmt)
         
         for r, row in enumerate(res['annual_withdrawals']):
-            worksheet.write(r+25, 0, row["Age"], normal_fmt)
-            worksheet.write(r+25, 1, row["Year"], normal_fmt)
-            worksheet.write(r+25, 2, row["Annual Withdrawal"], currency_fmt)
-            worksheet.write(r+25, 3, row["Monthly Amount"], currency_fmt)
-            worksheet.write(r+25, 4, row["Remaining Corpus"], currency_fmt)
+            worksheet.write(r+24, 0, row["Age"], normal_fmt)
+            worksheet.write(r+24, 1, row["Year"], normal_fmt)
+            worksheet.write(r+24, 2, row["Annual Withdrawal"], currency_fmt)
+            worksheet.write(r+24, 3, row["Monthly Amount"], currency_fmt)
+            worksheet.write(r+24, 4, row["Remaining Corpus"], currency_fmt)
 
-        worksheet.set_column('A:F', 22)
+        # --- COLUMN WIDTH ADJUSTMENT (Auto-fit equivalent) ---
+        worksheet.set_column('A:A', 28)
+        worksheet.set_column('B:B', 15)
+        worksheet.set_column('C:C', 5) # Spacer
+        worksheet.set_column('D:D', 28)
+        worksheet.set_column('E:E', 25)
 
     st.download_button(
         label="📥 Download Excel Report", 
